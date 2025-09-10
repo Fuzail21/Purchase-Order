@@ -6,30 +6,29 @@ use App\Models\Order;
 use App\Models\Pack;
 use App\Models\OrderRatio;
 use App\Models\OrderExtra;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 
 class OrderController extends Controller
 {
-    public function dashboard()
-    {
+    public function dashboard(){
         $title = "Dashboard";
         return view('dashboard', compact( 'title'));
     }
 
     // Show form with packs
-    public function create()
-    {
+    public function create(){
         $title = "New Order";
         $packs = Pack::all();
         return view('form.cutting_order', compact('packs', 'title'));
     }
 
     // Save order with ratios & extras
-    public function store(Request $request)
-    {
+    public function store(Request $request){
         // Create new order instance
         $order = new Order();
         $order->job_no     = $request->job_no;
@@ -95,16 +94,14 @@ class OrderController extends Controller
     }
 
     // Generate PDF
-    public function downloadPdf($id)
-    {
+    public function downloadPdf($id){
         $order = Order::with(['ratios', 'extras', 'pack'])->findOrFail($id);
         $pdf = Pdf::loadView('orders.pdf', compact('order'))->setPaper('a4', 'landscape');
         return $pdf->stream('order_'.$order->id.'.pdf');
     }
 
     // Show all orders
-    public function index()
-    {
+    public function index(){
         $title = "Orders List";
         $orders = Order::with(['pack', 'ratios', 'extras'])
         ->whereNull('deleted_at')
@@ -119,8 +116,7 @@ class OrderController extends Controller
         return view('orders.index', compact('orders', 'title'));
     }
 
-    public function edit($id)
-    {
+    public function edit($id){
         $title = "Edit Order";
         $order = Order::with(['ratios','extras','pack'])->findOrFail($id);
         $packs = Pack::all();
@@ -128,8 +124,7 @@ class OrderController extends Controller
     }
 
     // Update order
-    public function update(Request $request, $id)
-    {
+    public function update(Request $request, $id){
         $order = Order::findOrFail($id);
 
         $order->job_no     = $request->job_no;
@@ -198,10 +193,42 @@ class OrderController extends Controller
     }
 
     // Soft delete
-    public function destroy($id)
-    {
+    public function destroy($id){
         $order = Order::findOrFail($id);
         $order->delete(); // will mark deleted_at
         return redirect()->route('orders.index')->with('success', 'Order deleted successfully!');
+    }
+
+
+    public function setting()
+    {
+        // fetch the first (and only) settings record
+        $title = "Settings";
+        $setting = Setting::first();
+        return view('setting.edit', compact('setting', 'title'));
+    }
+
+    public function storeOrUpdate(Request $request)
+    {
+        $request->validate([
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        $setting = Setting::firstOrNew(['id' => 1]);
+
+        if ($request->hasFile('logo')) {
+            // delete old logo if exists
+            if ($setting->logo_path && Storage::exists('public/' . $setting->logo_path)) {
+                Storage::delete('public/' . $setting->logo_path);
+            }
+
+            // store new logo
+            $path = $request->file('logo')->store('logos', 'public');
+            $setting->logo_path = $path;
+        }
+
+        $setting->save();
+
+        return redirect()->route('settings')->with('success', 'Settings updated successfully.');
     }
 }

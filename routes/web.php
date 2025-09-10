@@ -17,8 +17,10 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     
+    // Dashboard
     Route::get('/dashboard', [OrderController::class, 'dashboard'])->name('dashboard');
 
+    // Order Management
     Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
 
@@ -35,6 +37,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/packs/create', [PackController::class, 'create'])->name('packs.create');
     Route::post('/packs', [PackController::class, 'store'])->name('packs.store');
     Route::delete('/packs/{id}', [PackController::class, 'destroy'])->name('packs.destroy');
+
+    // Settings
+    Route::get('/setting', [OrderController::class, 'setting'])->name('settings');
+    Route::post('/setting', [OrderController::class, 'storeOrUpdate'])->name('settings.storeOrUpdate');
 
 });
 

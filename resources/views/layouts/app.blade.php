@@ -8,18 +8,21 @@
     @yield('styles')
 </head>
 <body class="bg-gray-100 min-h-screen flex">
-
+    @php
+        use App\Models\Setting;
+        $setting = Setting::first();    
+    @endphp
     <!-- Sidebar -->
     <aside class="w-64 bg-white shadow-lg hidden md:flex flex-col">
         <div class="p-6 border-b">
-            <img src="{{ asset('build/assets/img/logo.png') }}" alt="Logo" class="mt-4 w-32 h-auto">
+            <img src="{{ asset('storage/' . $setting->logo_path) }}" alt="Logo" class="mt-4 w-32 h-auto" style="width: 120px; height: auto;">
         </div>
         <nav class="flex-1 p-4 space-y-2">
             <a href="{{ route('dashboard') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Dashboard</a>
             <a href="{{ route('orders.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Orders</a>
             <a href="{{ route('orders.create') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">+ New Order</a>
             <a href="{{ route('packs.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Packs</a>
-            <a href="#" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Settings</a>
+            <a href="{{ route('settings') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Settings</a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="block w-full text-left px-4 py-2 rounded hover:bg-gray-100 font-medium">
