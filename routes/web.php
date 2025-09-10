@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use App\Http\Controllers\OrderController;
+
+
+Route::get('/', function () {
+    return redirect()->route('dashboard');
+})->name('home');
+
+
+
+
+
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    Route::get('/dashboard', [OrderController::class, 'dashboard'])->name('dashboard');
+
+    Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])->name('orders.edit');
+    Route::post('/orders/{id}', [OrderController::class, 'update'])->name('orders.update');
+    Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
+
+    Route::get('/orders/{id}/pdf', [OrderController::class, 'downloadPdf'])->name('orders.pdf');
+
+});
+
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
