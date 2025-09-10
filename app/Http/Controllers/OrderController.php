@@ -40,6 +40,11 @@ class OrderController extends Controller
         $order->gsm        = $request->gsm;
         $order->buyer      = $request->buyer;
         $order->order_qty  = $request->order_qty;
+        // 🔹 New fields
+        $order->title       = $request->title;
+        $order->description = $request->description;
+        $order->po_label    = $request->po_label;
+        $order->care_label  = $request->care_label;
 
         if ($request->hasFile('file')) {
             $order->file_path = $request->file('file')->store('uploads', 'public');
@@ -135,6 +140,12 @@ class OrderController extends Controller
         $order->gsm        = $request->gsm;
         $order->buyer      = $request->buyer;
         $order->order_qty  = $request->order_qty;
+        // 🔹 New fields
+        $order->title       = $request->title;
+        $order->description = $request->description;
+        $order->po_label    = $request->po_label;
+        $order->care_label  = $request->care_label;
+
 
         if ($request->hasFile('file')) {
             $order->file_path = $request->file('file')->store('uploads', 'public');
@@ -183,7 +194,7 @@ class OrderController extends Controller
             }
         }
 
-        return redirect()->route('orders.index')->with('success', 'Order updated successfully!');
+        return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
     }
 
     // Soft delete

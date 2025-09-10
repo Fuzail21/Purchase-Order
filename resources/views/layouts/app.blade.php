@@ -18,6 +18,7 @@
             <a href="{{ route('dashboard') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Dashboard</a>
             <a href="{{ route('orders.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Orders</a>
             <a href="{{ route('orders.create') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">+ New Order</a>
+            <a href="{{ route('packs.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Packs</a>
             <a href="#" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Settings</a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
@@ -35,7 +36,7 @@
     <div class="flex-1 flex flex-col">
         <!-- Top Navbar -->
         <header class="bg-white shadow flex justify-between items-center px-6 py-4">
-            <h1 class="text-xl font-semibold text-gray-700">Orders</h1>
+            <h1 class="text-xl font-semibold text-gray-700">Order List</h1>
             <div class="flex items-center space-x-4">
                 <span class="text-gray-600">Hello, {{ auth()->user()->name ?? 'User' }}</span>
                 <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">

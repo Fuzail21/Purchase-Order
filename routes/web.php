@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PackController;
 
 
 Route::get('/', function () {
@@ -27,6 +28,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
     Route::get('/orders/{id}/pdf', [OrderController::class, 'downloadPdf'])->name('orders.pdf');
+
+
+    // Pack Management
+    Route::get('/packs', [PackController::class, 'index'])->name('packs.index');
+    Route::get('/packs/create', [PackController::class, 'create'])->name('packs.create');
+    Route::post('/packs', [PackController::class, 'store'])->name('packs.store');
+    Route::delete('/packs/{id}', [PackController::class, 'destroy'])->name('packs.destroy');
 
 });
 

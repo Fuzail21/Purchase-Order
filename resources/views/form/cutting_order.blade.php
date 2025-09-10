@@ -51,6 +51,23 @@
                        value="{{ old('order_qty', $order->order_qty ?? '') }}"
                        placeholder="Order Qty" class="border rounded-lg p-2" oninput="updateRatios()">
 
+                <!-- 🔹 New fields -->
+                <input type="text" name="title"
+                       value="{{ old('title', $order->title ?? '') }}"
+                       placeholder="Title" class="border rounded-lg p-2 col-span-full">
+
+                <textarea name="description" placeholder="Description"
+                          class="border rounded-lg p-2 col-span-full"
+                          rows="3">{{ old('description', $order->description ?? '') }}</textarea>
+
+                <input type="text" name="po_label"
+                       value="{{ old('po_label', $order->po_label ?? '') }}"
+                       placeholder="PO Label" class="border rounded-lg p-2">
+
+                <input type="text" name="care_label"
+                       value="{{ old('care_label', $order->care_label ?? '') }}"
+                       placeholder="Care Label" class="border rounded-lg p-2">
+
                 <input type="file" name="file" class="border rounded-lg p-2 col-span-full">
                 @if(isset($order) && $order->file_path)
                     <a href="{{ asset('storage/'.$order->file_path) }}" target="_blank" class="text-blue-600">
@@ -59,6 +76,7 @@
                 @endif
             </div>
         </section>
+
 
         <!-- Section 2: Color & Pack -->
         <section class="space-y-4">
