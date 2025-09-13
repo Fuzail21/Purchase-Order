@@ -13,20 +13,21 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-
-            $table->string('job_no')->nullable();
-            $table->string('style_no')->nullable();
+            $table->string('job_no');
+            $table->string('style_no');
             $table->date('po_date')->nullable();
             $table->date('ship_date')->nullable();
             $table->string('fabrics')->nullable();
             $table->integer('gsm')->nullable();
             $table->string('buyer')->nullable();
-            $table->integer('order_qty')->nullable();
+            $table->integer('order_qty');
+            $table->string('title')->nullable();
+            $table->text('description')->nullable();
+            $table->string('po_label')->nullable();
+            $table->string('care_label')->nullable();
             $table->string('file_path')->nullable();
-            $table->string('body_color')->nullable();
-
-            $table->foreignId('pack_id')->nullable()->constrained('packs')->nullOnDelete();
-
+            $table->integer('final_total');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

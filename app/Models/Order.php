@@ -12,23 +12,11 @@ class Order extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'job_no', 'style_no', 'po_date', 'ship_date',
-        'fabrics', 'gsm', 'buyer', 'order_qty',
-        'file_path', 'body_color', 'pack_id'
+        'job_no','style_no','po_date','ship_date','fabrics',
+        'gsm','buyer','order_qty','title','description',
+        'po_label','care_label','file_path','final_total'
     ];
 
-    public function pack()
-    {
-        return $this->belongsTo(Pack::class);
-    }
-
-    public function ratios()
-    {
-        return $this->hasMany(OrderRatio::class);
-    }
-
-    public function extras()
-    {
-        return $this->hasMany(OrderExtra::class);
-    }
+    public function colors() { return $this->hasMany(Color::class); }
+    public function extras() { return $this->hasMany(Extra::class); }
 }

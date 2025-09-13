@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('order_ratios', function (Blueprint $table) {
+        Schema::create('ratios', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
-            $table->string('size_name'); // e.g. S, M, L
-            $table->integer('ratio')->default(0);
-            $table->integer('actual_qty')->default(0);
+            $table->foreignId('packI_id')->constrained('pack_information')->onDelete('cascade');
+            $table->string('size_name')->nullable();
+            $table->integer('ratio');
+            $table->integer('actual_qty');
             $table->timestamps();
         });
     }
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('order_ratios');
+        Schema::dropIfExists('ratios');
     }
 };

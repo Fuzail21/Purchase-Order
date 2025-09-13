@@ -11,14 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('order_extras', function (Blueprint $table) {
+        Schema::create('extras', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
-            $table->string('name'); // e.g. Wastage, Testing
-            $table->decimal('percent', 5, 2)->default(0);
-            $table->integer('value')->default(0);
-
+            $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
+            $table->string('name')->nullable();
+            $table->decimal('percent', 5, 2);
+            $table->integer('value');
             $table->timestamps();
         });
     }
@@ -28,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('order_extras');
+        Schema::dropIfExists('extras');
     }
 };

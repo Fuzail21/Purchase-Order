@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('order_ratios', function (Blueprint $table) {
-            $table->integer('cutting_qty')->default(0)->after('actual_qty');
+        Schema::create('size_groups', function (Blueprint $table) {
+            $table->id();
+            $table->string('group_name');
+            $table->timestamps();
         });
     }
 
@@ -21,8 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('order_ratios', function (Blueprint $table) {
-            $table->dropColumn('cutting_qty');
-        });
+        Schema::dropIfExists('size_groups');
     }
 };

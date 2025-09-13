@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Pack;
-use App\Models\OrderRatio;
-use App\Models\OrderExtra;
+use App\Models\PackInformation;
+use App\Models\Color;
+use App\Models\SizeGroup;
+use App\Models\Ratio;
+use App\Models\Extra;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,74 +27,139 @@ class OrderController extends Controller
     public function create(){
         $title = "New Order";
         $packs = Pack::all();
-        return view('form.cutting_order', compact('packs', 'title'));
+        $sizeGroups = SizeGroup::all();
+        return view('form.cutting_order', compact('packs', 'title', 'sizeGroups'));
     }
 
     // Save order with ratios & extras
-    public function store(Request $request){
-        // Create new order instance
-        $order = new Order();
-        $order->job_no     = $request->job_no;
-        $order->style_no   = $request->style_no;
-        $order->po_date    = $request->po_date;
-        $order->ship_date  = $request->ship_date;
-        $order->fabrics    = $request->fabrics;
-        $order->gsm        = $request->gsm;
-        $order->buyer      = $request->buyer;
-        $order->order_qty  = $request->order_qty;
-        // 🔹 New fields
-        $order->title       = $request->title;
-        $order->description = $request->description;
-        $order->po_label    = $request->po_label;
-        $order->care_label  = $request->care_label;
+    // public function store(Request $request){
+    //     // Create new order instance
+    //     $order = new Order();
+    //     $order->job_no     = $request->job_no;
+    //     $order->style_no   = $request->style_no;
+    //     $order->po_date    = $request->po_date;
+    //     $order->ship_date  = $request->ship_date;
+    //     $order->fabrics    = $request->fabrics;
+    //     $order->gsm        = $request->gsm;
+    //     $order->buyer      = $request->buyer;
+    //     $order->order_qty  = $request->order_qty;
+    //     // 🔹 New fields
+    //     $order->title       = $request->title;
+    //     $order->description = $request->description;
+    //     $order->po_label    = $request->po_label;
+    //     $order->care_label  = $request->care_label;
 
-        if ($request->hasFile('file')) {
-            $order->file_path = $request->file('file')->store('uploads', 'public');
-        }
+    //     if ($request->hasFile('file')) {
+    //         $order->file_path = $request->file('file')->store('uploads', 'public');
+    //     }
 
-        $order->body_color = $request->body_color;
-        $order->pack_id    = $request->pack_id;
-        $order->save();
+    //     $order->body_color = $request->body_color;
+    //     $order->pack_id    = $request->pack_id;
+    //     $order->save();
 
-        // ---- HANDLE RATIOS WITH CALCULATION ----
-        if ($request->ratios) {
-            // Step 1: sum all ratios
-            $totalRatio = collect($request->ratios)->sum('ratio');
-            $finalTotal = (int) $request->finalTotal; // from form
+    //     // ---- HANDLE RATIOS WITH CALCULATION ----
+    //     if ($request->ratios) {
+    //         // Step 1: sum all ratios
+    //         $totalRatio = collect($request->ratios)->sum('ratio');
+    //         $finalTotal = (int) $request->finalTotal; // from form
 
-            foreach ($request->ratios as $ratio) {
-                $orderRatio = new OrderRatio();
-                $orderRatio->order_id   = $order->id;
-                $orderRatio->size_name  = $ratio['size_name'];
-                $orderRatio->ratio      = $ratio['ratio'];
-                $orderRatio->actual_qty = $ratio['actual_qty'] ?? 0;
+    //         foreach ($request->ratios as $ratio) {
+    //             $orderRatio = new OrderRatio();
+    //             $orderRatio->order_id   = $order->id;
+    //             $orderRatio->size_name  = $ratio['size_name'];
+    //             $orderRatio->ratio      = $ratio['ratio'];
+    //             $orderRatio->actual_qty = $ratio['actual_qty'] ?? 0;
 
-                // Step 2: calculate proportional cutting qty
-                if ($totalRatio > 0) {
-                    $calculated = ($finalTotal / $totalRatio) * $ratio['ratio'];
-                    $orderRatio->cutting_qty = floor($calculated);
-                } else {
-                    $orderRatio->cutting_qty = 0;
+    //             // Step 2: calculate proportional cutting qty
+    //             if ($totalRatio > 0) {
+    //                 $calculated = ($finalTotal / $totalRatio) * $ratio['ratio'];
+    //                 $orderRatio->cutting_qty = floor($calculated);
+    //             } else {
+    //                 $orderRatio->cutting_qty = 0;
+    //             }
+
+    //             $orderRatio->save();
+    //         }
+    //     }
+
+    //     // ---- HANDLE EXTRAS ----
+    //     if ($request->extras) {
+    //         foreach ($request->extras as $extra) {
+    //             $orderExtra = new OrderExtra();
+    //             $orderExtra->order_id = $order->id;
+    //             $orderExtra->name     = $extra['name'];
+    //             $orderExtra->percent  = $extra['percent'];
+    //             $orderExtra->value    = $extra['value'] ?? 0;
+    //             $orderExtra->save();
+    //         }
+    //     }
+
+    //     return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
+    // }
+
+    public function store(Request $request)
+    {
+        DB::transaction(function () use ($request) {
+            // Save Order
+            $order = new Order();
+            $order->job_no = $request->job_no;
+            $order->style_no = $request->style_no;
+            $order->po_date = $request->po_date;
+            $order->ship_date = $request->ship_date;
+            $order->fabrics = $request->fabrics;
+            $order->gsm = $request->gsm;
+            $order->buyer = $request->buyer;
+            $order->order_qty = $request->order_qty;
+            $order->title = $request->title;
+            $order->description = $request->description;
+            $order->po_label = $request->po_label;
+            $order->care_label = $request->care_label;
+            $order->file_path = $request->file_path;
+            $order->final_total = $request->final_total;
+            $order->save();
+
+            // Save Colors
+            foreach ($request->colors as $colorData) {
+                $color = new Color();
+                $color->order_id = $order->id;
+                $color->color_name = $colorData['color_name'];
+                $color->size_group_id = $colorData['size_group_id'];
+                $color->save();
+
+                // Save Packs
+                foreach ($colorData['packs'] as $packData) {
+                    $pack = new PackInformation();
+                    $pack->color_id = $color->id;
+                    $pack->pack_id = $packData['pack_name'];
+                    $pack->pack_qty = $packData['pack_qty'];
+                    $pack->save();
+
+                    // Save Ratios
+                    foreach ($packData['ratios'] as $ratioData) {
+                        $ratio = new Ratio();
+                        $ratio->packI_id = $pack->id;
+                        $ratio->size_name = $ratioData['size_name'];
+                        $ratio->ratio = $ratioData['ratio'];
+                        $ratio->actual_qty = $ratioData['actual_qty'];
+                        $ratio->save();
+                    }
                 }
-
-                $orderRatio->save();
             }
-        }
 
-        // ---- HANDLE EXTRAS ----
-        if ($request->extras) {
-            foreach ($request->extras as $extra) {
-                $orderExtra = new OrderExtra();
-                $orderExtra->order_id = $order->id;
-                $orderExtra->name     = $extra['name'];
-                $orderExtra->percent  = $extra['percent'];
-                $orderExtra->value    = $extra['value'] ?? 0;
-                $orderExtra->save();
+            // Save Extras
+            foreach ($request->extras as $extraData) {
+                $extra = new Extra();
+                $extra->order_id = $order->id;
+                $extra->name = $extraData['name'];
+                $extra->percent = $extraData['percent'];
+                $extra->value = $extraData['value'];
+                $extra->save();
             }
-        }
+        });
 
         return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
     }
+
 
     // Generate PDF
     public function downloadPdf($id){
