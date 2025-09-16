@@ -15,4 +15,9 @@ class Pack extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function ratios(): HasMany
+    {
+        return $this->hasMany(Ratio::class, 'packI_id');
+    }
 }

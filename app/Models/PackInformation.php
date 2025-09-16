@@ -17,6 +17,11 @@ class PackInformation extends Model
 
     public function ratios()
     {
-        return $this->hasMany(Ratio::class, 'pack_id');
+        return $this->hasMany(Ratio::class, 'packI_id');
+    }
+
+    public function pack()
+    {
+        return $this->belongsTo(Pack::class, 'pack_id');
     }
 }

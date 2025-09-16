@@ -5,7 +5,6 @@
         {{ isset($order) ? 'Edit Order' : 'Order Entry Form' }}
     </h1>
 
-    <!-- Form -->
     <form action="{{ isset($order) ? route('orders.update', $order->id) : route('orders.store') }}"
           method="POST" enctype="multipart/form-data" class="space-y-8">
         @csrf
@@ -13,7 +12,6 @@
             @method('POST') {{-- because you defined update route as POST --}}
         @endif
 
-        <!-- Section 1: Order Details -->
         <section class="space-y-4">
             <h2 class="text-xl font-semibold border-b pb-2">Order Details</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -52,7 +50,6 @@
                        placeholder="Order Qty" class="border rounded-lg p-2" oninput="updateAllTotals()">
 
 
-                <!-- 🔹 New fields -->
                 <input type="text" name="title"
                        value="{{ old('title', $order->title ?? '') }}"
                        placeholder="Title" class="border rounded-lg p-2 col-span-full">
@@ -79,15 +76,100 @@
         </section>
 
 
-        <!-- Section 2: Colors, Packs & Ratios -->
         <section class="space-y-4">
             <h2 class="text-xl font-semibold border-b pb-2">Colors, Packs & Ratios</h2>
             <button type="button" onclick="addColor()" class="bg-black text-white px-3 py-1 rounded-lg" id="addColorBtn">+ Add Color</button>
-            <div id="colorContainer" class="space-y-4 mt-4"></div>
+            <div id="colorContainer" class="space-y-4 mt-4">
+                @if(isset($order) && $order->colors->count() > 0)
+                    @foreach($order->colors as $color)
+                        <div class="border p-4 rounded-lg space-y-3" data-color-index="{{ $loop->index }}">
+                            <div class="flex gap-2 items-center" data-color-index="{{ $loop->index }}">
+                                <input type="text" name="colors[{{ $loop->index }}][color_name]" placeholder="Color"
+                                       value="{{ old('colors.'.$loop->index.'.color_name', $color->color_name) }}"
+                                       class="border p-2 rounded w-1/2">
+                                <select name="colors[{{ $loop->index }}][size_group]" class="border p-2 rounded w-1/2">
+                                    @foreach($sizeGroups as $group)
+                                        <option value="{{ $group->id }}" @if($color->size_group_id == $group->id) selected @endif>
+                                            {{ $group->group_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button type="button"
+                                        onclick="this.closest('[data-color-index]').remove(); updateAllTotals();"
+                                        class="bg-red-500 text-white px-2 py-1 rounded">
+                                    Remove
+                                </button>
+                            </div>
+
+                            <div class="space-y-2">
+                                <button type="button" onclick="addPack({{ $loop->index }})"
+                                        class="bg-blue-600 text-white px-3 py-1 rounded-lg">+ Add Pack</button>
+                                <div id="packContainer-{{ $loop->index }}" class="space-y-3">
+                                    @foreach($color->packs as $pack)
+                                        <div class="border p-3 rounded-lg space-y-2">
+                                            <div class="flex gap-2 items-center border p-2 rounded">
+                                                <select name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_name]"
+                                                        class="border p-2 rounded w-1/2">
+                                                    @foreach($packs as $p)
+                                                        <option value="{{ $p->id }}" @if($pack->pack_id == $p->id) selected @endif>
+                                                            {{ $p->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+
+                                                <input type="number"
+                                                       name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_qty]"
+                                                       placeholder="Pack Qty"
+                                                       value="{{ old('colors.'.$loop->parent->index.'.packs.'.$loop->index.'.pack_qty', $pack->pack_qty) }}"
+                                                       class="border p-2 rounded w-1/2"
+                                                       oninput="updateAllTotals()">
+
+                                                <button type="button"
+                                                        onclick="this.closest('div.border').remove(); updateAllTotals();"
+                                                        class="bg-red-500 text-white px-2 py-1 rounded">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <button type="button" onclick="addRatio({{ $loop->parent->index }}, {{ $loop->index }})" class="bg-green-600 text-white px-3 py-1 rounded-lg">+ Add Ratio</button>
+                                                <table class="min-w-full border mt-2 text-center">
+                                                    <thead class="bg-gray-200">
+                                                        <tr>
+                                                            <th class="border px-2">Size</th>
+                                                            <th class="border px-2">Ratio</th>
+                                                            <th class="border px-2">Actual Qty</th>
+                                                            <th class="border px-2">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="ratioContainer-{{ $loop->parent->index }}-{{ $loop->index }}">
+                                                        @foreach($pack->ratios as $ratio)
+                                                            <tr>
+                                                                <td class="border"><input type="text" name="colors[{{ $loop->parent->parent->index }}][packs][{{ $loop->parent->index }}][ratios][{{ $loop->index }}][size_name]"
+                                                                                          value="{{ old('colors.'.$loop->parent->parent->index.'.packs.'.$loop->parent->index.'.ratios.'.$loop->index.'.size_name', $ratio->size_name) }}"
+                                                                                          class="w-full p-1 border rounded"></td>
+                                                                <td class="border"><input type="number" name="colors[{{ $loop->parent->parent->index }}][packs][{{ $loop->parent->index }}][ratios][{{ $loop->index }}][ratio]"
+                                                                                          value="{{ old('colors.'.$loop->parent->parent->index.'.packs.'.$loop->parent->index.'.ratios.'.$loop->index.'.ratio', $ratio->ratio) }}"
+                                                                                          class="w-full p-1 border rounded" oninput="updateAllTotals()"></td>
+                                                                <td class="border"><input type="number" name="colors[{{ $loop->parent->parent->index }}][packs][{{ $loop->parent->index }}][ratios][{{ $loop->index }}][actual_qty]"
+                                                                                          value="{{ old('colors.'.$loop->parent->parent->index.'.packs.'.$loop->parent->index.'.ratios.'.$loop->index.'.actual_qty', $ratio->actual_qty) }}"
+                                                                                          readonly class="w-full p-1 border rounded bg-gray-100"></td>
+                                                                <td class="border"><button type="button" onclick="this.closest('tr').remove(); updateAllTotals();" class="bg-red-500 text-white px-2 py-1 rounded">X</button></td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
+            </div>
             <p id="limitReachedMsg" class="text-red-500 font-semibold hidden">Order quantity limit reached. Cannot add more packs.</p>
         </section>
 
-        <!-- Section 3: Extra Usage -->
         <section class="space-y-4">
             <h2 class="text-xl font-semibold border-b pb-2">Extra Usage</h2>
             <button type="button" onclick="addExtraRow()" class="bg-black text-white px-3 py-1 rounded-lg">
@@ -133,7 +215,6 @@
             </div>
         </section>
 
-        <!-- Submit Button -->
         <div class="flex justify-end pt-4">
             <button type="submit"
                     class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow">
@@ -141,7 +222,6 @@
             </button>
         </div>
 
-        <!-- Totals Section -->
         <section>
             <h2 class="text-xl font-semibold border-b pb-2">Totals</h2>
             <div class="overflow-x-auto">
@@ -175,7 +255,8 @@
 
 @section('scripts')
 <script>
-    let colorIndex = 0;
+    // Set the initial index based on the number of existing colors
+    let colorIndex = {{ isset($order) ? $order->colors->count() : 0 }};
     let extraIndex = {{ $extraIndex ?? 0 }};
 
     // Add new color block
