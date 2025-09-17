@@ -99,8 +99,9 @@ class OrderController extends Controller
             //     }
             // }
 
-            return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
         });
+        $order = Order::findOrFail($id);
+        return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
     }
 
 
@@ -221,9 +222,10 @@ class OrderController extends Controller
             //         }
             //     }
             // }
-
-            return redirect()->route('orders.pdf', $order->id)->with('success', 'Order updated successfully.');
+            
         });
+        $order = Order::findOrFail($id);
+        return redirect()->route('orders.pdf', $order->id)->with('success', 'Order updated successfully.');
     }
 
 

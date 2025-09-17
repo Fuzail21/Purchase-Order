@@ -28,9 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])->name('orders.edit');
     Route::post('/orders/{id}', [OrderController::class, 'update'])->name('orders.update');
+    Route::get('/orders/pdf/{id}', [OrderController::class, 'downloadPdf'])->name('orders.pdf');
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
-    Route::get('/orders/{id}/pdf', [OrderController::class, 'downloadPdf'])->name('orders.pdf');
 
 
     // Pack Management
