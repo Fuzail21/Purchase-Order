@@ -5,6 +5,7 @@
         {{ isset($order) ? 'Edit Order' : 'Order Entry Form' }}
     </h1>
 
+    {{-- Form for creating or updating an order. It supports file uploads. --}}
     <form action="{{ isset($order) ? route('orders.update', $order->id) : route('orders.store') }}"
           method="POST" enctype="multipart/form-data" class="space-y-8">
         @csrf
@@ -12,6 +13,7 @@
             @method('POST') {{-- because you defined update route as POST --}}
         @endif
 
+        {{-- Section for basic order details like job number, style number, etc. --}}
         <section class="space-y-4">
             <h2 class="text-xl font-semibold border-b pb-2">Order Details</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -45,6 +47,7 @@
                        value="{{ old('buyer', $order->buyer ?? '') }}"
                        placeholder="Buyer" class="border rounded-lg p-2">
                        
+                {{-- Order Quantity input that triggers all calculations on change --}}
                 <input type="number" name="order_qty" id="orderQty"
                        value="{{ old('order_qty', $order->order_qty ?? '') }}"
                        placeholder="Order Qty" class="border rounded-lg p-2" oninput="updateAllTotals()">
@@ -76,10 +79,12 @@
         </section>
 
 
+        {{-- Section for managing colors, packs, and ratios --}}
         <section class="space-y-4">
             <h2 class="text-xl font-semibold border-b pb-2">Colors, Packs & Ratios</h2>
             <button type="button" onclick="addColor()" class="bg-black text-white px-3 py-1 rounded-lg" id="addColorBtn">+ Add Color</button>
             <div id="colorContainer" class="space-y-4 mt-4">
+                {{-- Loop through existing colors and packs for editing mode --}}
                 @if(isset($order) && $order->colors->count() > 0)
                     @foreach($order->colors as $color)
                         <div class="border p-4 rounded-lg space-y-3" data-color-index="{{ $loop->index }}">
@@ -159,6 +164,17 @@
                                                     </tbody>
                                                 </table>
                                             </div>
+                                            <div class="space-y-2">
+                                                <h4 class="font-semibold text-sm">Pack Extra Usage</h4>
+                                                <div class="flex gap-2">
+                                                     <input type="number" name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_extra_percent]" 
+                                                           placeholder="Extra %" min="0" value="{{ old('colors.'.$loop->parent->index.'.packs.'.$loop->index.'.pack_extra_percent', $pack->pack_extra_percent ?? 0) }}" 
+                                                           class="border p-2 rounded w-1/2 percentInput" oninput="updateAllTotals()">
+                                                    <input type="number" name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_extra_qty]" 
+                                                           placeholder="Extra Qty" value="{{ old('colors.'.$loop->parent->index.'.packs.'.($loop->index).'.pack_extra_qty', $pack->pack_extra_qty ?? 0) }}" 
+                                                           readonly class="border p-2 rounded w-1/2 bg-gray-100 extraValue">
+                                                </div>
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -170,8 +186,10 @@
             <p id="limitReachedMsg" class="text-red-500 font-semibold hidden">Order quantity limit reached. Cannot add more packs.</p>
         </section>
 
-        <section class="space-y-4">
-            <h2 class="text-xl font-semibold border-b pb-2">Extra Usage</h2>
+        {{-- Section for overall extra usage --}}
+        {{-- This section is commented out but left in place --}}
+        {{-- <section class="space-y-4">
+            <h2 class="text-xl font-semibold border-b pb-2">Extra Usage (Overall Order)</h2>
             <button type="button" onclick="addExtraRow()" class="bg-black text-white px-3 py-1 rounded-lg">
                 + Add Usage
             </button>
@@ -197,9 +215,9 @@
                             <td class="border">
                                 <input type="number" name="extras[{{ $extraIndex }}][percent]" min="0"
                                        value="{{ $extra['percent'] ?? 0 }}"
-                                       class="p-1 border rounded percentInput" oninput="updateAllTotals()">
+                                       class="p-1 border rounded overallPercentInput" oninput="updateAllTotals()">
                             </td>
-                            <td class="border extraValue">
+                            <td class="border overallExtraValue">
                                 <input type="number" name="extras[{{ $extraIndex }}][value]"
                                        value="{{ $extra['value'] ?? 0 }}"
                                        readonly class="p-1 border rounded bg-gray-100 w-full">
@@ -213,8 +231,9 @@
                     </tbody>
                 </table>
             </div>
-        </section>
+        </section> --}}
 
+        {{-- Submit button --}}
         <div class="flex justify-end pt-4">
             <button type="submit"
                     class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow">
@@ -222,6 +241,7 @@
             </button>
         </div>
 
+        {{-- Totals display section --}}
         <section>
             <h2 class="text-xl font-semibold border-b pb-2">Totals</h2>
             <div class="overflow-x-auto">
@@ -245,6 +265,7 @@
                 </table>
             </div>
         </section>
+        {{-- Hidden input to store the final total value for form submission --}}
         <input type="hidden" id="finalTotal" name="finalTotal"
                value="{{ old('finalTotal', $order->finalTotal ?? 0) }}">
     </form>
@@ -259,7 +280,7 @@
     let colorIndex = {{ isset($order) ? $order->colors->count() : 0 }};
     let extraIndex = {{ $extraIndex ?? 0 }};
 
-    // Add new color block
+    // Add new color block dynamically to the DOM
     function addColor() {
         const orderQty = parseInt(document.getElementById('orderQty').value) || 0;
         const currentTotalPackQty = getCurrentTotalPackQty();
@@ -303,7 +324,7 @@
         colorIndex++;
     }
 
-    // Add pack under color
+    // Add pack block under a specific color dynamically
     function addPack(colorIndex) {
         const orderQty = parseInt(document.getElementById('orderQty').value) || 0;
         const currentTotalPackQty = getCurrentTotalPackQty();
@@ -354,27 +375,53 @@
                     <tbody id="ratioContainer-${colorIndex}-${packIndex}"></tbody>
                 </table>
             </div>
+
+            <div class="space-y-2">
+                <h4 class="font-semibold text-sm">Pack Extra Usage</h4>
+                <div class="flex gap-2">
+                    <input type="number" name="colors[${colorIndex}][packs][${packIndex}][pack_extra_percent]" 
+                           placeholder="Extra %" min="0" value="0" 
+                           class="border p-2 rounded w-1/2 percentInput" oninput="updateAllTotals()">
+                    <input type="number" name="colors[${colorIndex}][packs][${packIndex}][pack_extra_qty]" 
+                           placeholder="Extra Qty" value="0" 
+                           readonly class="border p-2 rounded w-1/2 bg-gray-100 extraValue">
+                </div>
+            </div>
         `;
 
         packContainer.appendChild(packBlock);
     }
 
-    // Add ratio under pack
+    // Add a new ratio row under a specific pack
     function addRatio(colorIndex, packIndex) {
         const ratioContainer = document.getElementById(`ratioContainer-${colorIndex}-${packIndex}`);
         const ratioCount = ratioContainer.children.length;
 
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td class="border"><input type="text" name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][size_name]" class="w-full p-1 border rounded"></td>
-            <td class="border"><input type="number" name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][ratio]" class="w-full p-1 border rounded" oninput="updateAllTotals()"></td>
+            <td class="border">
+                <input type="text" 
+                       name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][size_name]" 
+                       class="w-full p-1 border rounded"
+                       onkeydown="if(event.key === 'Enter'){ event.preventDefault(); }">
+            </td>
+
+            <td class="border">
+                <input type="number" 
+                       name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][ratio]" 
+                       class="w-full p-1 border rounded" 
+                       oninput="updateAllTotals()" 
+                       onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addRatio(${colorIndex}, ${packIndex}); }">
+            </td>
+
             <td class="border"><input type="number" name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][actual_qty]" value="0" readonly class="w-full p-1 border rounded bg-gray-100"></td>
             <td class="border"><button type="button" onclick="this.closest('tr').remove(); updateAllTotals();" class="bg-red-500 text-white px-2 py-1 rounded">X</button></td>
         `;
         ratioContainer.appendChild(row);
     }
 
-    function addExtraRow() {
+    // This is the commented-out function for adding an overall extra row.
+    /*function addExtraRow() {
         const table = document.getElementById('extraTable').querySelector('tbody');
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -383,9 +430,9 @@
             </td>
             <td class="border">
                 <input type="number" name="extras[${extraIndex}][percent]" min="0" value="0"
-                       class="p-1 border rounded percentInput" oninput="updateAllTotals()">
+                       class="p-1 border rounded overallPercentInput" oninput="updateAllTotals()">
             </td>
-            <td class="border extraValue">
+            <td class="border overallExtraValue">
                 <input type="number" name="extras[${extraIndex}][value]" value="0" readonly class="p-1 border rounded bg-gray-100 w-full">
             </td>
             <td class="border">
@@ -395,7 +442,7 @@
         table.appendChild(row);
         extraIndex++;
         updateAllTotals();
-    }
+    } */
 
     // Helper function to get the sum of all pack quantities
     function getCurrentTotalPackQty() {
@@ -407,7 +454,7 @@
     }
 
 
-    // Main function to update all calculations
+    // Main function to update all calculations on the page
     function updateAllTotals() {
         const orderQtyInput = document.getElementById('orderQty');
         const orderQty = parseInt(orderQtyInput.value) || 0;
@@ -422,7 +469,6 @@
                 let packQtyInput = packBlock.querySelector('[name^="colors"][name$="[pack_qty]"]');
                 let packQty = parseInt(packQtyInput.value) || 0;
                 
-                // If a new value causes the total to exceed the order quantity, correct it
                 const currentTotalExcludingThis = getCurrentTotalPackQty() - packQty;
                 if (orderQty > 0 && currentTotalExcludingThis + packQty > orderQty) {
                     packQty = orderQty - currentTotalExcludingThis;
@@ -434,17 +480,25 @@
                 let packRatioSum = 0;
                 let ratioInputs = packBlock.querySelectorAll('[name^="colors"][name$="[ratio]"]');
 
-                // First, sum the ratios for this pack
+                // Sum the ratios for this pack first
                 ratioInputs.forEach(ratioInput => {
                     packRatioSum += parseInt(ratioInput.value) || 0;
                 });
 
-                // Then, calculate actual quantities for each ratio within this pack
+                // Calculate the pack-specific extra quantity
+                const packPercent = parseFloat(packBlock.querySelector('[name$="[pack_extra_percent]"]').value) || 0;
+                const packExtraQty = Math.floor((packQty * packPercent) / 100);
+                packBlock.querySelector('[name$="[pack_extra_qty]"]').value = packExtraQty;
+                totalExtraUsage += packExtraQty;
+
+                // The new total quantity for this pack is the pack_qty plus the extra qty
+                const totalPackQtyWithExtra = packQty + packExtraQty;
+
+                // Distribute this new total quantity across the ratios
                 packBlock.querySelectorAll('tbody tr').forEach(ratioRow => {
                     let ratioValue = parseInt(ratioRow.querySelector('[name^="colors"][name$="[ratio]"]').value) || 0;
-                    let actualQty = packRatioSum > 0 ? Math.floor((packQty / packRatioSum) * ratioValue) : 0;
+                    let actualQty = packRatioSum > 0 ? Math.floor((totalPackQtyWithExtra / packRatioSum) * ratioValue) : 0;
                     
-                    // Update the readonly actual qty input
                     ratioRow.querySelector('[name^="colors"][name$="[actual_qty]"]').value = actualQty;
                     
                     totalActualQty += actualQty;
@@ -465,11 +519,11 @@
             limitMsg.classList.add('hidden');
         }
 
-        // Calculate and sum the extra usage
+        // Calculate and sum the overall extra usage from the commented out section
         document.querySelectorAll('#extraTable tbody tr').forEach(row => {
-            const percent = parseFloat(row.querySelector('.percentInput').value) || 0;
+            const percent = parseFloat(row.querySelector('.overallPercentInput').value) || 0;
             const value = Math.floor((totalActualQty * percent) / 100);
-            row.querySelector('.extraValue input').value = value;
+            row.querySelector('.overallExtraValue input').value = value;
             totalExtraUsage += value;
         });
 

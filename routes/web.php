@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PackController;
+use App\Http\Controllers\SizeGroupController;
 
 
 Route::get('/', function () {
@@ -34,9 +35,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Pack Management
     Route::get('/packs', [PackController::class, 'index'])->name('packs.index');
-    Route::get('/packs/create', [PackController::class, 'create'])->name('packs.create');
     Route::post('/packs', [PackController::class, 'store'])->name('packs.store');
     Route::delete('/packs/{id}', [PackController::class, 'destroy'])->name('packs.destroy');
+
+    // Size Group Management
+    Route::get('/size', [SizeGroupController::class, 'index'])->name('size.index');
+    Route::post('/size', [SizeGroupController::class, 'store'])->name('size.store');
+    Route::delete('/size/{id}', [SizeGroupController::class, 'destroy'])->name('size.destroy');
 
     // Settings
     Route::get('/setting', [OrderController::class, 'setting'])->name('settings');

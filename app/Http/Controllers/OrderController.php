@@ -31,75 +31,9 @@ class OrderController extends Controller
         return view('form.cutting_order', compact('packs', 'title', 'sizeGroups'));
     }
 
-    // Save order with ratios & extras
-    // public function store(Request $request){
-    //     // Create new order instance
-    //     $order = new Order();
-    //     $order->job_no     = $request->job_no;
-    //     $order->style_no   = $request->style_no;
-    //     $order->po_date    = $request->po_date;
-    //     $order->ship_date  = $request->ship_date;
-    //     $order->fabrics    = $request->fabrics;
-    //     $order->gsm        = $request->gsm;
-    //     $order->buyer      = $request->buyer;
-    //     $order->order_qty  = $request->order_qty;
-    //     // 🔹 New fields
-    //     $order->title       = $request->title;
-    //     $order->description = $request->description;
-    //     $order->po_label    = $request->po_label;
-    //     $order->care_label  = $request->care_label;
-
-    //     if ($request->hasFile('file')) {
-    //         $order->file_path = $request->file('file')->store('uploads', 'public');
-    //     }
-
-    //     $order->body_color = $request->body_color;
-    //     $order->pack_id    = $request->pack_id;
-    //     $order->save();
-
-    //     // ---- HANDLE RATIOS WITH CALCULATION ----
-    //     if ($request->ratios) {
-    //         // Step 1: sum all ratios
-    //         $totalRatio = collect($request->ratios)->sum('ratio');
-    //         $finalTotal = (int) $request->finalTotal; // from form
-
-    //         foreach ($request->ratios as $ratio) {
-    //             $orderRatio = new OrderRatio();
-    //             $orderRatio->order_id   = $order->id;
-    //             $orderRatio->size_name  = $ratio['size_name'];
-    //             $orderRatio->ratio      = $ratio['ratio'];
-    //             $orderRatio->actual_qty = $ratio['actual_qty'] ?? 0;
-
-    //             // Step 2: calculate proportional cutting qty
-    //             if ($totalRatio > 0) {
-    //                 $calculated = ($finalTotal / $totalRatio) * $ratio['ratio'];
-    //                 $orderRatio->cutting_qty = floor($calculated);
-    //             } else {
-    //                 $orderRatio->cutting_qty = 0;
-    //             }
-
-    //             $orderRatio->save();
-    //         }
-    //     }
-
-    //     // ---- HANDLE EXTRAS ----
-    //     if ($request->extras) {
-    //         foreach ($request->extras as $extra) {
-    //             $orderExtra = new OrderExtra();
-    //             $orderExtra->order_id = $order->id;
-    //             $orderExtra->name     = $extra['name'];
-    //             $orderExtra->percent  = $extra['percent'];
-    //             $orderExtra->value    = $extra['value'] ?? 0;
-    //             $orderExtra->save();
-    //         }
-    //     }
-
-    //     return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
-    // }
-
+    // Store Order
     public function store(Request $request)
     {
-        // dd($request->all());
         DB::transaction(function () use ($request) {
             // Save Order
             $order = new Order();
@@ -117,7 +51,7 @@ class OrderController extends Controller
             $order->care_label = $request->care_label;
             if ($request->hasFile('file')) {
                 $order->file_path = $request->file('file')->store('uploads', 'public');
-     }
+            }
             $order->final_total = $request->finalTotal;
             $order->save();
 
@@ -126,7 +60,7 @@ class OrderController extends Controller
                 $color = new Color();
                 $color->order_id = $order->id;
                 $color->color_name = $colorData['color_name'];
-                $color->size_group_id = $colorData['size_group'] ?? 1; // default to 1 if not provided
+                $color->size_group_id = $colorData['size_group'] ?? 1;
                 $color->save();
 
                 // Save Packs
@@ -135,6 +69,8 @@ class OrderController extends Controller
                     $pack->color_id = $color->id;
                     $pack->pack_id = $packData['pack_name'];
                     $pack->pack_qty = $packData['pack_qty'];
+                    $pack->pack_extra_percent = $packData['pack_extra_percent'] ?? 0;
+                    $pack->pack_extra_qty = $packData['pack_extra_qty'] ?? 0;
                     $pack->save();
 
                     // Save Ratios
@@ -149,23 +85,22 @@ class OrderController extends Controller
                 }
             }
 
-            // Save Extras
-            if ($request->has('extras') && !empty($request->extras)) {
-                foreach ($request->extras as $extraData) {
-                    if (!empty($extraData['name']) && !empty($extraData['percent'])) {
-                        $extra = new Extra();
-                        $extra->order_id = $order->id;
-                        $extra->name     = $extraData['name'];
-                        $extra->percent  = $extraData['percent'];
-                        $extra->value    = $extraData['value'] ?? 0; // default 0 if empty
-                        $extra->save();
-                    }
-                }
-            }
-        
+            // Save Overall Extras
+            // if ($request->has('extras') && !empty($request->extras)) {
+            //     foreach ($request->extras as $extraData) {
+            //         if (!empty($extraData['name']) && !empty($extraData['percent'])) {
+            //             $extra = new Extra(); // Changed model name
+            //             $extra->order_id = $order->id;
+            //             $extra->name = $extraData['name'];
+            //             $extra->percent = $extraData['percent'];
+            //             $extra->value = $extraData['value'] ?? 0;
+            //             $extra->save();
+            //         }
+            //     }
+            // }
+
             return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
         });
-
     }
 
 
@@ -207,156 +142,89 @@ class OrderController extends Controller
         return view('form.cutting_order', compact('order','packs', 'title', 'sizeGroups')); // reuse same form
     }
 
-    // Update order
-    // public function update(Request $request, $id){
-    //     $order = Order::findOrFail($id);
-
-    //     $order->job_no     = $request->job_no;
-    //     $order->style_no   = $request->style_no;
-    //     $order->po_date    = $request->po_date;
-    //     $order->ship_date  = $request->ship_date;
-    //     $order->fabrics    = $request->fabrics;
-    //     $order->gsm        = $request->gsm;
-    //     $order->buyer      = $request->buyer;
-    //     $order->order_qty  = $request->order_qty;
-    //     // 🔹 New fields
-    //     $order->title       = $request->title;
-    //     $order->description = $request->description;
-    //     $order->po_label    = $request->po_label;
-    //     $order->care_label  = $request->care_label;
-
-
-    //     if ($request->hasFile('file')) {
-    //         $order->file_path = $request->file('file')->store('uploads', 'public');
-    //     }
-
-    //     $order->body_color = $request->body_color;
-    //     $order->pack_id    = $request->pack_id;
-    //     $order->save();
-
-    //     // Delete old ratios & extras first
-    //     $order->ratios()->delete();
-    //     $order->extras()->delete();
-
-    //     // ---- HANDLE RATIOS ----
-    //     if ($request->ratios) {
-    //         $totalRatio = collect($request->ratios)->sum('ratio');
-    //         $finalTotal = (int) $request->finalTotal;
-
-    //         foreach ($request->ratios as $ratio) {
-    //             $orderRatio = new OrderRatio();
-    //             $orderRatio->order_id   = $order->id;
-    //             $orderRatio->size_name  = $ratio['size_name'];
-    //             $orderRatio->ratio      = $ratio['ratio'];
-    //             $orderRatio->actual_qty = $ratio['actual_qty'] ?? 0;
-
-    //             if ($totalRatio > 0) {
-    //                 $calculated = ($finalTotal / $totalRatio) * $ratio['ratio'];
-    //                 $orderRatio->cutting_qty = floor($calculated);
-    //             } else {
-    //                 $orderRatio->cutting_qty = 0;
-    //             }
-
-    //             $orderRatio->save();
-    //         }
-    //     }
-
-    //     // ---- HANDLE EXTRAS ----
-    //     if ($request->extras) {
-    //         foreach ($request->extras as $extra) {
-    //             $orderExtra = new OrderExtra();
-    //             $orderExtra->order_id = $order->id;
-    //             $orderExtra->name     = $extra['name'];
-    //             $orderExtra->percent  = $extra['percent'];
-    //             $orderExtra->value    = $extra['value'] ?? 0;
-    //             $orderExtra->save();
-    //         }
-    //     }
-
-    //     return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
-    // }
-
     public function update(Request $request, $id)
-{
-    DB::transaction(function () use ($request, $id) {
-        // Find Order
-        $order = Order::findOrFail($id);
+    {
+        DB::transaction(function () use ($request, $id) {
+            // Find Order
+            $order = Order::findOrFail($id);
 
-        // Update Order
-        $order->job_no      = $request->job_no;
-        $order->style_no    = $request->style_no;
-        $order->po_date     = $request->po_date;
-        $order->ship_date   = $request->ship_date;
-        $order->fabrics     = $request->fabrics;
-        $order->gsm         = $request->gsm;
-        $order->buyer       = $request->buyer;
-        $order->order_qty   = $request->order_qty;
-        $order->title       = $request->title;
-        $order->description = $request->description;
-        $order->po_label    = $request->po_label;
-        $order->care_label  = $request->care_label;
+            // Update Order
+            $order->job_no = $request->job_no;
+            $order->style_no = $request->style_no;
+            $order->po_date = $request->po_date;
+            $order->ship_date = $request->ship_date;
+            $order->fabrics = $request->fabrics;
+            $order->gsm = $request->gsm;
+            $order->buyer = $request->buyer;
+            $order->order_qty = $request->order_qty;
+            $order->title = $request->title;
+            $order->description = $request->description;
+            $order->po_label = $request->po_label;
+            $order->care_label = $request->care_label;
 
-        if ($request->hasFile('file')) {
-            $order->file_path = $request->file('file')->store('uploads', 'public');
-        }
+            if ($request->hasFile('file')) {
+                $order->file_path = $request->file('file')->store('uploads', 'public');
+            }
 
-        $order->final_total = $request->finalTotal;
-        $order->save();
+            $order->final_total = $request->finalTotal;
+            $order->save();
 
-        /** --------------------------
-         * Colors, Packs, Ratios
-         * ------------------------- */
-        // Delete old relations (to replace with new input)
-        Color::where('order_id', $order->id)->delete();
+            /** --------------------------
+             * Colors, Packs, Ratios
+             * ------------------------- */
+            // Delete old relations (to replace with new input)
+            Color::where('order_id', $order->id)->delete();
 
-        foreach ($request->colors as $colorData) {
-            $color = new Color();
-            $color->order_id      = $order->id;
-            $color->color_name    = $colorData['color_name'];
-            $color->size_group_id = $colorData['size_group'] ?? 1;
-            $color->save();
+            foreach ($request->colors as $colorData) {
+                $color = new Color();
+                $color->order_id = $order->id;
+                $color->color_name = $colorData['color_name'];
+                $color->size_group_id = $colorData['size_group'] ?? 1;
+                $color->save();
 
-            // Packs
-            foreach ($colorData['packs'] as $packData) {
-                $pack = new PackInformation();
-                $pack->color_id = $color->id;
-                $pack->pack_id  = $packData['pack_name'];
-                $pack->pack_qty = $packData['pack_qty'];
-                $pack->save();
+                // Packs
+                foreach ($colorData['packs'] as $packData) {
+                    $pack = new PackInformation();
+                    $pack->color_id = $color->id;
+                    $pack->pack_id = $packData['pack_name'];
+                    $pack->pack_qty = $packData['pack_qty'];
+                    $pack->pack_extra_percent = $packData['pack_extra_percent'] ?? 0;
+                    $pack->pack_extra_qty = $packData['pack_extra_qty'] ?? 0;
+                    $pack->save();
 
-                // Ratios
-                foreach ($packData['ratios'] as $ratioData) {
-                    $ratio = new Ratio();
-                    $ratio->packI_id   = $pack->id;
-                    $ratio->size_name  = $ratioData['size_name'];
-                    $ratio->ratio      = $ratioData['ratio'];
-                    $ratio->actual_qty = $ratioData['actual_qty'];
-                    $ratio->save();
+                    // Ratios
+                    foreach ($packData['ratios'] as $ratioData) {
+                        $ratio = new Ratio();
+                        $ratio->packI_id = $pack->id;
+                        $ratio->size_name = $ratioData['size_name'];
+                        $ratio->ratio = $ratioData['ratio'];
+                        $ratio->actual_qty = $ratioData['actual_qty'];
+                        $ratio->save();
+                    }
                 }
             }
-        }
 
-        /** --------------------------
-         * Extras
-         * ------------------------- */
-        Extra::where('order_id', $order->id)->delete();
+            /** --------------------------
+             * Overall Extras
+             * ------------------------- */
+            // Extra::where('order_id', $order->id)->delete();
 
-        if ($request->has('extras') && !empty($request->extras)) {
-            foreach ($request->extras as $extraData) {
-                if (!empty($extraData['name']) && !empty($extraData['percent'])) {
-                    $extra = new Extra();
-                    $extra->order_id = $order->id;
-                    $extra->name     = $extraData['name'];
-                    $extra->percent  = $extraData['percent'];
-                    $extra->value    = $extraData['value'] ?? 0;
-                    $extra->save();
-                }
-            }
-        }
+            // if ($request->has('extras') && !empty($request->extras)) {
+            //     foreach ($request->extras as $extraData) {
+            //         if (!empty($extraData['name']) && !empty($extraData['percent'])) {
+            //             $extra = new Extra();
+            //             $extra->order_id = $order->id;
+            //             $extra->name = $extraData['name'];
+            //             $extra->percent = $extraData['percent'];
+            //             $extra->value = $extraData['value'] ?? 0;
+            //             $extra->save();
+            //         }
+            //     }
+            // }
 
-        return redirect()->route('orders.pdf', $order->id)->with('success', 'Order updated successfully.');
-    });
-}
+            return redirect()->route('orders.pdf', $order->id)->with('success', 'Order updated successfully.');
+        });
+    }
 
 
     // Soft delete

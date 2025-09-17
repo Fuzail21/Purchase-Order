@@ -14,11 +14,6 @@ class PackController extends Controller
         return view('packs.index', compact('packs', 'title'));
     }
 
-    public function create()
-    {
-        return view('packs.create');
-    }
-
     public function store(Request $request)
     {
 

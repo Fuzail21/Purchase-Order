@@ -15,12 +15,22 @@
     <!-- Sidebar -->
     <aside class="w-64 bg-white shadow-lg hidden md:flex flex-col">
         <div class="p-6 border-b">
-            <img src="{{ asset('storage/' . $setting->logo_path) }}" alt="Logo" class="mt-4 w-32 h-auto" style="width: 120px; height: auto;">
+
+            @if ($setting && $setting->logo_path && file_exists(storage_path('app/public/' . $setting->logo_path)))
+                <img src="{{ asset('storage/' . $setting->logo_path) }}" 
+                     alt="Logo" 
+                     class="mt-4 w-32 h-auto" 
+                     style="width: 120px; height: auto;">
+            @else
+                <span class="mt-4 block text-gray-600">No Logo</span>
+            @endif
+
         </div>
         <nav class="flex-1 p-4 space-y-2">
             <a href="{{ route('dashboard') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Dashboard</a>
             <a href="{{ route('orders.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Orders</a>
             <a href="{{ route('orders.create') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">+ New Order</a>
+            <a href="{{ route('size.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Size Group</a>
             <a href="{{ route('packs.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Packs</a>
             <a href="{{ route('settings') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Settings</a>
             <form method="POST" action="{{ route('logout') }}">

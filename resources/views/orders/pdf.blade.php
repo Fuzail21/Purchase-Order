@@ -79,47 +79,57 @@
     @php
         $grandCuttingTotal = 0;
         $grandActualTotal = 0;
-        $allSizes = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
     @endphp
-    
+
     @if(!empty($order->colors))
         @foreach($order->colors as $color)
             @if(!empty($color->packs))
-                <table class="tight new-table">
-                    @php
-                        $ratioHeaders = [];
-                        $dataRows = [];
-                    @endphp
+                @php
+                    $colorRatios = collect($color->packs)->flatMap(function($pack) {
+                        return collect($pack->ratios)->map(function($ratio) {
+                            return ['size_name' => strtoupper($ratio->size_name), 'qty' => $ratio->actual_qty, 'ratio' => $ratio->ratio];
+                        });
+                    });
+                    $sizeOrder = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
+                    $allSizes = $colorRatios->pluck('size_name')->unique()->sort(function($a, $b) use ($sizeOrder) {
+                        $posA = array_search($a, $sizeOrder);
+                        $posB = array_search($b, $sizeOrder);
+                        return $posA <=> $posB;
+                    })->values();
+                    //$allSizes = $colorRatios->pluck('size_name')->unique()->sort()->values();
+                    $ratioHeaders = [];
+                    $dataRows = [];
 
+                    // These variables will hold the total for the current table only
+                    $tableCuttingTotal = 0;
+                    $tableActualTotal = 0;
+                @endphp
+                <table class="tight new-table">
                     @foreach($color->packs as $pack)
                         @php
-                            $ratiosBySize = [];
-                            foreach ($pack->ratios as $ratio) {
-                                $ratiosBySize[strtoupper($ratio->size_name)] = [
-                                    'ratio' => $ratio->ratio,
-                                    'qty'   => $ratio->actual_qty
-                                ];
-                            }
+                            $ratiosBySize = collect($pack->ratios)->keyBy(fn($ratio) => strtoupper($ratio->size_name));
+                            $packCuttingTotal = $pack->pack_qty + ($pack->pack_extra_qty ?? 0);
+                            $packActualTotal = $pack->pack_qty;
 
-                            $packCuttingTotal = collect($allSizes)->sum(fn($size) => $ratiosBySize[$size]['qty'] ?? 0);
-                            $packActualTotal = $packCuttingTotal;
+                             // Accumulate for the current table
+                            $tableCuttingTotal += $packCuttingTotal;
+                            $tableActualTotal += $packActualTotal;
+
                             $grandCuttingTotal += $packCuttingTotal;
                             $grandActualTotal += $packActualTotal;
-
-                            // Save ratio header row
+                            
                             $ratioHeaders[] = '
                                 <tr class="shade bold caps">
                                     <td colspan="2">RATIO# '.($pack->pack->name ?? 'N/A').' PACK</td>
-                                    '.collect($allSizes)->map(fn($size) => '<td>'.($ratiosBySize[$size]['ratio'] ?? '').'</td>')->implode('').'
-                                    <td class="shade">'.array_sum(collect($allSizes)->map(fn($size) => $ratiosBySize[$size]['ratio'] ?? 0)->toArray()).'</td>
+                                    '.$allSizes->map(fn($size) => '<td>'.($ratiosBySize[$size]['ratio'] ?? '-').'</td>')->implode('').'
+                                    <td class="shade">'.collect($ratiosBySize)->sum('ratio').'</td>
                                     <td colspan="2"></td>
                                 </tr>
                             ';
 
-                            // Save data row
                             $rowCells = '';
                             foreach ($allSizes as $size) {
-                                $rowCells .= '<td>'.($ratiosBySize[$size]['qty'] ?? 'NO').'</td>';
+                                $rowCells .= '<td>'.($ratiosBySize[$size]['actual_qty'] ?? 'NO').'</td>';
                             }
 
                             $dataRows[] = '
@@ -134,10 +144,8 @@
                         @endphp
                     @endforeach
 
-                    {{-- Print all ratio headers first --}}
                     {!! implode('', $ratioHeaders) !!}
 
-                    {{-- Main header row --}}
                     <tr class="shade bold">
                         <td class="caps">COLOR</td>
                         <td>PACK#</td>
@@ -148,19 +156,17 @@
                         <td class="caps">ACTUAL</td>
                     </tr>
 
-                    {{-- Print all data rows --}}
                     {!! implode('', $dataRows) !!}
 
-                    {{-- Totals --}}
                     <tr class="shade bold">
                         <td class="caps" colspan="2">TOTAL</td>
                         @foreach($allSizes as $size)
                             <td>
-                                {{ collect($color->packs)->sum(fn($p) => collect($p->ratios)->firstWhere('size_name', 'LIKE', $size)['actual_qty'] ?? 0) }}
+                                {{ $colorRatios->where('size_name', $size)->sum('qty') }}
                             </td>
                         @endforeach
-                        <td>{{ $packCuttingTotal }}</td>
-                        <td>{{ $packActualTotal }}</td>
+                        <td>{{ $tableCuttingTotal }}</td>
+                        <td>{{ $tableActualTotal }}</td>
                     </tr>
                 </table>
                 <div class="spacer-8"></div>
