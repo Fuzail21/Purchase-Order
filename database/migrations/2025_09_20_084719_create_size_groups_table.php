@@ -11,12 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('extras', function (Blueprint $table) {
+        Schema::create('size_groups', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-            $table->string('name')->nullable();
-            $table->decimal('percent', 5, 2);
-            $table->integer('value');
+            $table->string('name');
             $table->timestamps();
         });
     }
@@ -26,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('extras');
+        Schema::dropIfExists('size_groups');
     }
 };

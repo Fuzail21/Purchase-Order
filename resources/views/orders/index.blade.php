@@ -66,8 +66,8 @@
                 </div>
 
                 <!-- Pagination -->
-                <div class="mt-6">
+                {{-- <div class="mt-6">
                     {{ $orders->links('pagination::tailwind') }}
-                </div>
+                </div> --}}
     @endsection
 

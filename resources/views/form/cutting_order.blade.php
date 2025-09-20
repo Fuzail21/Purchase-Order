@@ -1,544 +1,563 @@
-@extends('layouts.app')
-@section('content')
-
-    <h1 class="text-3xl font-bold text-center">
-        {{ isset($order) ? 'Edit Order' : 'Order Entry Form' }}
-    </h1>
-
-    {{-- Form for creating or updating an order. It supports file uploads. --}}
-    <form action="{{ isset($order) ? route('orders.update', $order->id) : route('orders.store') }}"
-          method="POST" enctype="multipart/form-data" class="space-y-8">
-        @csrf
-        @if(isset($order))
-            @method('POST') {{-- because you defined update route as POST --}}
-        @endif
-
-        {{-- Section for basic order details like job number, style number, etc. --}}
-        <section class="space-y-4">
-            <h2 class="text-xl font-semibold border-b pb-2">Order Details</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" name="job_no"
-                       value="{{ old('job_no', $order->job_no ?? '') }}"
-                       placeholder="Job #" class="border rounded-lg p-2">
-
-                <input type="text" name="style_no"
-                       value="{{ old('style_no', $order->style_no ?? '') }}"
-                       placeholder="Style #" class="border rounded-lg p-2">
-
-                <input type="text" name="po_date"
-                       value="{{ old('po_date', $order->po_date ?? '') }}"
-                       placeholder="PO Date" class="border rounded-lg p-2"
-                       onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'">
-
-                <input type="text" name="ship_date"
-                       value="{{ old('ship_date', $order->ship_date ?? '') }}"
-                       placeholder="Ship Date" class="border rounded-lg p-2"
-                       onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'">
-
-                <input type="text" name="fabrics"
-                       value="{{ old('fabrics', $order->fabrics ?? '') }}"
-                       placeholder="Fabrics" class="border rounded-lg p-2">
-
-                <input type="number" name="gsm"
-                       value="{{ old('gsm', $order->gsm ?? '') }}"
-                       placeholder="GSM" class="border rounded-lg p-2">
-
-                <input type="text" name="buyer"
-                       value="{{ old('buyer', $order->buyer ?? '') }}"
-                       placeholder="Buyer" class="border rounded-lg p-2">
-                       
-                {{-- Order Quantity input that triggers all calculations on change --}}
-                <input type="number" name="order_qty" id="orderQty"
-                       value="{{ old('order_qty', $order->order_qty ?? '') }}"
-                       placeholder="Order Qty" class="border rounded-lg p-2" oninput="updateAllTotals()">
-
-
-                <input type="text" name="title"
-                       value="{{ old('title', $order->title ?? '') }}"
-                       placeholder="Title" class="border rounded-lg p-2 col-span-full">
-
-                <textarea name="description" placeholder="Description"
-                          class="border rounded-lg p-2 col-span-full"
-                          rows="3">{{ old('description', $order->description ?? '') }}</textarea>
-
-                <input type="text" name="po_label"
-                       value="{{ old('po_label', $order->po_label ?? '') }}"
-                       placeholder="PO Label" class="border rounded-lg p-2">
-
-                <input type="text" name="care_label"
-                       value="{{ old('care_label', $order->care_label ?? '') }}"
-                       placeholder="Care Label" class="border rounded-lg p-2">
-
-                <input type="file" name="file" class="border rounded-lg p-2 col-span-full">
-                @if(isset($order) && $order->file_path)
-                    <a href="{{ asset('storage/'.$order->file_path) }}" target="_blank" class="text-blue-600">
-                        View Current File
-                    </a>
-                @endif
-            </div>
-        </section>
-
-
-        {{-- Section for managing colors, packs, and ratios --}}
-        <section class="space-y-4">
-            <h2 class="text-xl font-semibold border-b pb-2">Colors, Packs & Ratios</h2>
-            <button type="button" onclick="addColor()" class="bg-black text-white px-3 py-1 rounded-lg" id="addColorBtn">+ Add Color</button>
-            <div id="colorContainer" class="space-y-4 mt-4">
-                {{-- Loop through existing colors and packs for editing mode --}}
-                @if(isset($order) && $order->colors->count() > 0)
-                    @foreach($order->colors as $color)
-                        <div class="border p-4 rounded-lg space-y-3" data-color-index="{{ $loop->index }}">
-                            <div class="flex gap-2 items-center" data-color-index="{{ $loop->index }}">
-                                <input type="text" name="colors[{{ $loop->index }}][color_name]" placeholder="Color"
-                                       value="{{ old('colors.'.$loop->index.'.color_name', $color->color_name) }}"
-                                       class="border p-2 rounded w-1/2">
-                                <select name="colors[{{ $loop->index }}][size_group]" class="border p-2 rounded w-1/2">
-                                    @foreach($sizeGroups as $group)
-                                        <option value="{{ $group->id }}" @if($color->size_group_id == $group->id) selected @endif>
-                                            {{ $group->group_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <button type="button"
-                                        onclick="this.closest('[data-color-index]').remove(); updateAllTotals();"
-                                        class="bg-red-500 text-white px-2 py-1 rounded">
-                                    Remove
-                                </button>
-                            </div>
-
-                            <div class="space-y-2">
-                                <button type="button" onclick="addPack({{ $loop->index }})"
-                                        class="bg-blue-600 text-white px-3 py-1 rounded-lg">+ Add Pack</button>
-                                <div id="packContainer-{{ $loop->index }}" class="space-y-3">
-                                    @foreach($color->packs as $pack)
-                                        <div class="border p-3 rounded-lg space-y-2">
-                                            <div class="flex gap-2 items-center border p-2 rounded">
-                                                <select name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_name]"
-                                                        class="border p-2 rounded w-1/2">
-                                                    @foreach($packs as $p)
-                                                        <option value="{{ $p->id }}" @if($pack->pack_id == $p->id) selected @endif>
-                                                            {{ $p->name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-
-                                                <input type="number"
-                                                       name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_qty]"
-                                                       placeholder="Pack Qty"
-                                                       value="{{ old('colors.'.$loop->parent->index.'.packs.'.$loop->index.'.pack_qty', $pack->pack_qty) }}"
-                                                       class="border p-2 rounded w-1/2"
-                                                       oninput="updateAllTotals()">
-
-                                                <button type="button"
-                                                        onclick="this.closest('div.border').remove(); updateAllTotals();"
-                                                        class="bg-red-500 text-white px-2 py-1 rounded">
-                                                    Remove
-                                                </button>
-                                            </div>
-                                            <div class="space-y-2">
-                                                <button type="button" onclick="addRatio({{ $loop->parent->index }}, {{ $loop->index }})" class="bg-green-600 text-white px-3 py-1 rounded-lg">+ Add Ratio</button>
-                                                <table class="min-w-full border mt-2 text-center">
-                                                    <thead class="bg-gray-200">
-                                                        <tr>
-                                                            <th class="border px-2">Size</th>
-                                                            <th class="border px-2">Ratio</th>
-                                                            <th class="border px-2">Actual Qty</th>
-                                                            <th class="border px-2">Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="ratioContainer-{{ $loop->parent->index }}-{{ $loop->index }}">
-                                                        @foreach($pack->ratios as $ratio)
-                                                            <tr>
-                                                                <td class="border"><input type="text" name="colors[{{ $loop->parent->parent->index }}][packs][{{ $loop->parent->index }}][ratios][{{ $loop->index }}][size_name]"
-                                                                                          value="{{ old('colors.'.$loop->parent->parent->index.'.packs.'.$loop->parent->index.'.ratios.'.$loop->index.'.size_name', $ratio->size_name) }}"
-                                                                                          class="w-full p-1 border rounded"></td>
-                                                                <td class="border"><input type="number" name="colors[{{ $loop->parent->parent->index }}][packs][{{ $loop->parent->index }}][ratios][{{ $loop->index }}][ratio]"
-                                                                                          value="{{ old('colors.'.$loop->parent->parent->index.'.packs.'.$loop->parent->index.'.ratios.'.$loop->index.'.ratio', $ratio->ratio) }}"
-                                                                                          class="w-full p-1 border rounded" oninput="updateAllTotals()"></td>
-                                                                <td class="border"><input type="number" name="colors[{{ $loop->parent->parent->index }}][packs][{{ $loop->parent->index }}][ratios][{{ $loop->index }}][actual_qty]"
-                                                                                          value="{{ old('colors.'.$loop->parent->parent->index.'.packs.'.$loop->parent->index.'.ratios.'.$loop->index.'.actual_qty', $ratio->actual_qty) }}"
-                                                                                          readonly class="w-full p-1 border rounded bg-gray-100"></td>
-                                                                <td class="border"><button type="button" onclick="this.closest('tr').remove(); updateAllTotals();" class="bg-red-500 text-white px-2 py-1 rounded">X</button></td>
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <div class="space-y-2">
-                                                <h4 class="font-semibold text-sm">Pack Extra Usage</h4>
-                                                <div class="flex gap-2">
-                                                     <input type="number" name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_extra_percent]" 
-                                                           placeholder="Extra %" min="0" value="{{ old('colors.'.$loop->parent->index.'.packs.'.$loop->index.'.pack_extra_percent', $pack->pack_extra_percent ?? 0) }}" 
-                                                           class="border p-2 rounded w-1/2 percentInput" oninput="updateAllTotals()">
-                                                    <input type="number" name="colors[{{ $loop->parent->index }}][packs][{{ $loop->index }}][pack_extra_qty]" 
-                                                           placeholder="Extra Qty" value="{{ old('colors.'.$loop->parent->index.'.packs.'.($loop->index).'.pack_extra_qty', $pack->pack_extra_qty ?? 0) }}" 
-                                                           readonly class="border p-2 rounded w-1/2 bg-gray-100 extraValue">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                @endif
-            </div>
-            <p id="limitReachedMsg" class="text-red-500 font-semibold hidden">Order quantity limit reached. Cannot add more packs.</p>
-        </section>
-
-        {{-- Section for overall extra usage --}}
-        {{-- This section is commented out but left in place --}}
-        {{-- <section class="space-y-4">
-            <h2 class="text-xl font-semibold border-b pb-2">Extra Usage (Overall Order)</h2>
-            <button type="button" onclick="addExtraRow()" class="bg-black text-white px-3 py-1 rounded-lg">
-                + Add Usage
-            </button>
-            <div class="overflow-x-auto">
-                <table class="min-w-full border mt-2 text-center" id="extraTable">
-                    <thead class="bg-gray-200">
-                    <tr>
-                        <th class="border px-2">Name</th>
-                        <th class="border px-2">%</th>
-                        <th class="border px-2">Value</th>
-                        <th class="border px-2">Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @php $extraIndex = 0; @endphp
-                    @foreach(old('extras', isset($order) ? $order->extras->toArray() : []) as $extra)
-                        <tr>
-                            <td class="border">
-                                <input type="text" name="extras[{{ $extraIndex }}][name]"
-                                       value="{{ $extra['name'] ?? '' }}"
-                                       class="p-1 border rounded extraName">
-                            </td>
-                            <td class="border">
-                                <input type="number" name="extras[{{ $extraIndex }}][percent]" min="0"
-                                       value="{{ $extra['percent'] ?? 0 }}"
-                                       class="p-1 border rounded overallPercentInput" oninput="updateAllTotals()">
-                            </td>
-                            <td class="border overallExtraValue">
-                                <input type="number" name="extras[{{ $extraIndex }}][value]"
-                                       value="{{ $extra['value'] ?? 0 }}"
-                                       readonly class="p-1 border rounded bg-gray-100 w-full">
-                            </td>
-                            <td class="border">
-                                <button type="button" onclick="this.closest('tr').remove(); updateAllTotals();" class="text-red-500">Remove</button>
-                            </td>
-                        </tr>
-                        @php $extraIndex++; @endphp
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </section> --}}
-
-        {{-- Submit button --}}
-        <div class="flex justify-end pt-4">
-            <button type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow">
-                {{ isset($order) ? 'Update' : 'Submit' }}
-            </button>
-        </div>
-
-        {{-- Totals display section --}}
-        <section>
-            <h2 class="text-xl font-semibold border-b pb-2">Totals</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full border text-center" id="totalTable">
-                    <thead class="bg-gray-200">
-                    <tr>
-                        <th class="border px-1">Order Qty</th>
-                        <th class="border px-1">Actual Total</th>
-                        <th class="border px-1">Extra Usage</th>
-                        <th class="border px-1">Final Total</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr>
-                        <td class="border" id="totalOrderQty">0</td>
-                        <td class="border" id="actualTotal">0</td>
-                        <td class="border" id="totalExtraUsage">0</td>
-                        <td class="border font-bold" id="finalTotalDisplay">0</td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-        {{-- Hidden input to store the final total value for form submission --}}
-        <input type="hidden" id="finalTotal" name="finalTotal"
-               value="{{ old('finalTotal', $order->finalTotal ?? 0) }}">
-    </form>
-</div>
-
-
-@endsection
-
-@section('scripts')
-<script>
-    // Set the initial index based on the number of existing colors
-    let colorIndex = {{ isset($order) ? $order->colors->count() : 0 }};
-    let extraIndex = {{ $extraIndex ?? 0 }};
-
-    // Add new color block dynamically to the DOM
-    function addColor() {
-        const orderQty = parseInt(document.getElementById('orderQty').value) || 0;
-        const currentTotalPackQty = getCurrentTotalPackQty();
-        if (orderQty > 0 && currentTotalPackQty >= orderQty) {
-            document.getElementById('limitReachedMsg').classList.remove('hidden');
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cutting Order Program</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #374151;
         }
-
-        const colorContainer = document.getElementById('colorContainer');
-        const colorBlock = document.createElement('div');
-        colorBlock.classList.add('border', 'p-4', 'rounded-lg', 'space-y-3');
-        colorBlock.setAttribute('data-color-index', colorIndex);
-
-        colorBlock.innerHTML = `
-            <div class="flex gap-2 items-center" data-color-index="${colorIndex}">
-                <input type="text" name="colors[${colorIndex}][color_name]" placeholder="Color" 
-                       class="border p-2 rounded w-1/2">
-
-                <select name="colors[${colorIndex}][size_group]" class="border p-2 rounded w-1/2">
-                    @foreach($sizeGroups as $group)
-                        <option value="{{ $group->id }}">{{ $group->group_name }}</option>
-                    @endforeach
-                </select>
-
-                <button type="button" 
-                        onclick="this.closest('[data-color-index]').remove(); updateAllTotals();" 
-                        class="bg-red-500 text-white px-2 py-1 rounded">
-                    Remove
-                </button>
-            </div>
-
-            <div class="space-y-2">
-                <button type="button" onclick="addPack(${colorIndex})" 
-                        class="bg-blue-600 text-white px-3 py-1 rounded-lg">+ Add Pack</button>
-                <div id="packContainer-${colorIndex}" class="space-y-3"></div>
-            </div>
-        `;
-
-
-        colorContainer.appendChild(colorBlock);
-        colorIndex++;
-    }
-
-    // Add pack block under a specific color dynamically
-    function addPack(colorIndex) {
-        const orderQty = parseInt(document.getElementById('orderQty').value) || 0;
-        const currentTotalPackQty = getCurrentTotalPackQty();
-        if (orderQty > 0 && currentTotalPackQty >= orderQty) {
-            document.getElementById('limitReachedMsg').classList.remove('hidden');
-            return;
+        .input-text {
+            @apply border border-gray-300 rounded-lg p-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200;
         }
+        .table-input {
+            transition: all 0.2s;
+        }
+        .table-input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+        .btn {
+            @apply px-4 py-2 rounded-lg font-semibold shadow transition-transform transform hover:scale-105;
+        }
+        .btn-primary {
+            @apply bg-indigo-600 text-white hover:bg-indigo-700;
+        }
+        .btn-danger {
+            @apply bg-red-500 text-white hover:bg-red-600;
+        }
+        .btn-secondary {
+            @apply bg-gray-600 text-white hover:bg-gray-700;
+        }
+        [type="date"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            color: transparent;
+            cursor: pointer;
+        }
+        [type="date"] {
+            position: relative;
+        }
+        [type="date"]::before {
+            content: attr(placeholder);
+            color: #9ca3af;
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+        [type="date"]:valid::before {
+            content: '';
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <h1 class="text-3xl font-bold text-center text-gray-800">Cutting Order Program</h1>
+        <form action="{{ isset($order) ? route('orders.update', $order->id) : route('orders.store') }}" 
+              method="POST" enctype="multipart/form-data" class="space-y-8">
+            @csrf
+            @if(isset($order))
+                @method('PUT')
+            @endif
+            <!-- Purchase Order Details Section -->
+            <section class="bg-white p-6 rounded-xl shadow-lg space-y-6">
+                <!-- Title -->
+                <h2 class="text-xl font-semibold border-b pb-2 text-gray-700">Purchase Order Details</h2>
 
-        const packContainer = document.getElementById(`packContainer-${colorIndex}`);
-        const packIndex = packContainer.children.length;
+                <!-- Grid Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Job No -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Job #</label>
+                        <input type="text" name="job_no"
+                               value="{{ old('job_no', $order->job_no ?? '') }}"
+                               placeholder="Enter Job #" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
 
-        const packBlock = document.createElement('div');
-        packBlock.classList.add('border', 'p-3', 'rounded-lg', 'space-y-2');
-        packBlock.innerHTML = `
-            <div class="flex gap-2 items-center border p-2 rounded">
-                <select name="colors[${colorIndex}][packs][${packIndex}][pack_name]" 
-                        class="border p-2 rounded w-1/2">
-                    @foreach($packs as $pack)
-                        <option value="{{ $pack->id }}">{{ $pack->name }}</option>
-                    @endforeach
-                </select>
-            
-                <input type="number" 
-                       name="colors[${colorIndex}][packs][${packIndex}][pack_qty]" 
-                       placeholder="Pack Qty" 
-                       class="border p-2 rounded w-1/2" 
-                       oninput="updateAllTotals()">
-            
-                <button type="button" 
-                        onclick="this.closest('div.border').remove(); updateAllTotals();" 
-                        class="bg-red-500 text-white px-2 py-1 rounded">
-                    Remove
-                </button>
-            </div>
+                    <!-- Style No -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Style #</label>
+                        <input type="text" name="style_no"
+                               value="{{ old('style_no', $order->style_no ?? '') }}"
+                               placeholder="Enter Style #" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- PO Date -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">PO Date</label>
+                        <input type="text" name="po_date"
+                               value="{{ old('po_date', $order->po_date ?? '') }}"
+                               placeholder="Select PO Date" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+                               onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'">
+                    </div>
+
+                    <!-- Ship Date -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Ship Date</label>
+                        <input type="text" name="ship_date"
+                               value="{{ old('ship_date', $order->ship_date ?? '') }}"
+                               placeholder="Select Ship Date" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+                               onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'">
+                    </div>
+
+                    <!-- Fabrics -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Fabrics</label>
+                        <input type="text" name="fabrics"
+                               value="{{ old('fabrics', $order->fabrics ?? '') }}"
+                               placeholder="Enter Fabrics" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- GSM -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">GSM</label>
+                        <input type="number" name="gsm"
+                               value="{{ old('gsm', $order->gsm ?? '') }}"
+                               placeholder="Enter GSM" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Buyer -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Buyer</label>
+                        <input type="text" name="buyer"
+                               value="{{ old('buyer', $order->buyer ?? '') }}"
+                               placeholder="Enter Buyer" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Order Qty -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Order Qty</label>
+                        <input type="number" name="order_qty" id="orderQty"
+                               value="{{ old('order_qty', $order->order_qty ?? '') }}"
+                               placeholder="Enter Order Quantity" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+                               oninput="updateAllTotals()">
+                    </div>
+
+                    <!-- Title (full width) -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Title</label>
+                        <input type="text" name="title"
+                               value="{{ old('title', $order->title ?? '') }}"
+                               placeholder="Enter Title" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Description (full width) -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Description</label>
+                        <input type="text" name="description"
+                               value="{{ old('description', $order->description ?? '') }}"
+                               placeholder="Enter Description" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
 
 
-            <div class="space-y-2">
-                <button type="button" onclick="addRatio(${colorIndex}, ${packIndex})" class="bg-green-600 text-white px-3 py-1 rounded-lg">+ Add Ratio</button>
-                <table class="min-w-full border mt-2 text-center">
-                    <thead class="bg-gray-200">
-                        <tr>
-                            <th class="border px-2">Size</th>
-                            <th class="border px-2">Ratio</th>
-                            <th class="border px-2">Actual Qty</th>
-                            <th class="border px-2">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ratioContainer-${colorIndex}-${packIndex}"></tbody>
-                </table>
-            </div>
+                    <!-- PO Label -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">PO Label</label>
+                        <input type="text" name="po_label"
+                               value="{{ old('po_label', $order->po_label ?? '') }}"
+                               placeholder="Enter PO Label" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
 
-            <div class="space-y-2">
-                <h4 class="font-semibold text-sm">Pack Extra Usage</h4>
-                <div class="flex gap-2">
-                    <input type="number" name="colors[${colorIndex}][packs][${packIndex}][pack_extra_percent]" 
-                           placeholder="Extra %" min="0" value="0" 
-                           class="border p-2 rounded w-1/2 percentInput" oninput="updateAllTotals()">
-                    <input type="number" name="colors[${colorIndex}][packs][${packIndex}][pack_extra_qty]" 
-                           placeholder="Extra Qty" value="0" 
-                           readonly class="border p-2 rounded w-1/2 bg-gray-100 extraValue">
+                    <!-- Care Label -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Care Label</label>
+                        <input type="text" name="care_label"
+                               value="{{ old('care_label', $order->care_label ?? '') }}"
+                               placeholder="Enter Care Label" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- File Upload (full width) -->
+                    <div class="md:col-span-4">
+                        <label class="block text-gray-700 font-medium mb-1">Upload File</label>
+                        <input type="file" 
+                               name="file" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+                               accept="image/jpeg, image/jpg, image/png, image/webp">
+
+                        @if(isset($order) && $order->file_path)
+                            <a href="{{ asset('storage/'.$order->file_path) }}" target="_blank" class="text-blue-600 text-sm mt-2 inline-block">
+                                View Current File
+                            </a>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Limit Message -->
+                <div id="limitReachedMsg" 
+                     class="p-2 bg-red-100 text-red-700 rounded-lg text-sm text-center font-semibold hidden">
+                    Order quantity limit reached. Cannot add more items.
+                </div>
+            </section>
+
+
+            <!-- Overall Totals Display -->
+            <div class="bg-white p-6 rounded-xl shadow-lg flex justify-between items-center flex-wrap gap-4">
+                <div class="flex flex-col items-center">
+                    <span class="text-xs font-medium text-gray-500">Order Quantity</span>
+                    <span id="totalOrderQty" class="text-xl font-bold text-gray-900">0</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-xs font-medium text-gray-500">Actual Total</span>
+                    <span id="actualTotal" class="text-xl font-bold text-gray-900">0</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-xs font-medium text-gray-500">Extra Usage</span>
+                    <span id="totalExtraUsage" class="text-xl font-bold text-red-600">0</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-xs font-medium text-gray-500">Final Total</span>
+                    <span id="finalTotalDisplay" class="text-xl font-bold text-indigo-600">0</span>
+                    <input type="hidden" name="finalTotal" id="finalTotal" value="0">
                 </div>
             </div>
-        `;
 
-        packContainer.appendChild(packBlock);
+            <!-- Add Pack Section -->
+            <div class="bg-white p-6 rounded-xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+                <h2 class="text-xl font-semibold text-gray-700">Add a New Pack</h2>
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <select id="sizeGroupSelector" class="w-full md:w-36 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        <!-- Options for size groups -->
+                    </select>
+                    <select id="packSelector" class="w-full md:w-48 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                    <button type="button" id="addPackBtn" class="btn btn-primary w-full md:w-auto">Add Pack</button>
+                </div>
+            </div>
+            <!-- Dynamic Packs Container -->
+            <div id="packsContainer" class="space-y-8">
+                <!-- Pack blocks will be dynamically added here -->
+            </div>
+
+            <button type="submit" id="formSubmit" class="btn btn-primary w-full md:w-auto">Save Order</button>
+        <form>
+    </div>
+
+    <script>
+const simulatedDB = @json($simulatedDB);
+
+const packsContainer = document.getElementById('packsContainer');
+const sizeGroupSelector = document.getElementById('sizeGroupSelector');
+const packSelector = document.getElementById('packSelector');
+const addPackBtn = document.getElementById('addPackBtn');
+
+let packIndex = 0;
+
+
+// Save order qty input in variable
+const orderQtyInput = document.getElementById("orderQty");
+
+
+
+// Validation message placeholder
+let errorMsg = document.createElement("p");
+errorMsg.className = "text-red-600 text-sm mt-1 hidden";
+errorMsg.id = "qtyErrorMsg";
+orderQtyInput.parentNode.appendChild(errorMsg);
+
+// Function to calculate total color qty
+function calculateTotalColorQty() {
+    let total = 0;
+    const qtyInputs = document.querySelectorAll(
+        'input[name*="[qty]"]'
+    );
+    qtyInputs.forEach(input => {
+        const val = parseInt(input.value) || 0;
+        total += val;
+    });
+    return total;
+}
+
+// Function to validate against order qty
+function validateTotalQty() {
+    const orderQty = parseInt(orderQtyInput.value) || 0;
+    const totalQty = calculateTotalColorQty();
+    const formSubmit = document.getElementById("formSubmit");
+
+
+    if (totalQty > orderQty) {
+        errorMsg.textContent = `❌ Total Color quantity (${totalQty}) cannot exceed Order Qty (${orderQty}).`;
+        errorMsg.classList.remove("hidden");
+        formSubmit.disabled = true;
+        return false;
+    } else {
+        errorMsg.classList.add("hidden");
+        formSubmit.disabled = false;
+        return true;
     }
+}
 
-    // Add a new ratio row under a specific pack
-    function addRatio(colorIndex, packIndex) {
-        const ratioContainer = document.getElementById(`ratioContainer-${colorIndex}-${packIndex}`);
-        const ratioCount = ratioContainer.children.length;
+// Attach event listeners to dynamically added qty fields
+function attachQtyValidation() {
+    const qtyInputs = document.querySelectorAll('input[name*="[qty]"]');
+    qtyInputs.forEach(input => {
+        input.removeEventListener("input", validateTotalQty); // prevent duplicate
+        input.addEventListener("input", validateTotalQty);
+    });
+}
 
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="border">
-                <input type="text" 
-                       name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][size_name]" 
-                       class="w-full p-1 border rounded"
-                       onkeydown="if(event.key === 'Enter'){ event.preventDefault(); }">
-            </td>
+// Update totals when order qty changes
+orderQtyInput.addEventListener("input", validateTotalQty);
 
-            <td class="border">
-                <input type="number" 
-                       name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][ratio]" 
-                       class="w-full p-1 border rounded" 
-                       oninput="updateAllTotals()" 
-                       onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addRatio(${colorIndex}, ${packIndex}); }">
-            </td>
 
-            <td class="border"><input type="number" name="colors[${colorIndex}][packs][${packIndex}][ratios][${ratioCount}][actual_qty]" value="0" readonly class="w-full p-1 border rounded bg-gray-100"></td>
-            <td class="border"><button type="button" onclick="this.closest('tr').remove(); updateAllTotals();" class="bg-red-500 text-white px-2 py-1 rounded">X</button></td>
-        `;
-        ratioContainer.appendChild(row);
+// Initialize size group dropdown
+simulatedDB.sizeGroups.forEach(group => {
+    const option = document.createElement('option');
+    option.value = group.id;
+    option.textContent = group.name;
+    sizeGroupSelector.appendChild(option);
+});
+
+// Populate packs based on size group
+function populatePackSelector() {
+    const selectedGroup = sizeGroupSelector.value;
+    packSelector.innerHTML = '';
+
+    const filteredPacks = simulatedDB.packs.filter(
+        pack => String(pack.group) === String(selectedGroup)
+    );
+
+    filteredPacks.forEach(pack => {
+        const option = document.createElement('option');
+        option.value = pack.id;
+        option.textContent = pack.name;
+        packSelector.appendChild(option);
+    });
+}
+
+sizeGroupSelector.addEventListener('change', populatePackSelector);
+
+// Add Pack
+addPackBtn.addEventListener('click', () => {
+    const selectedPackId = packSelector.value;
+    const packData = simulatedDB.packs.find(
+        p => String(p.id) === String(selectedPackId)
+    );
+    if (packData) {
+        addPack(packData);
     }
+});
 
-    // This is the commented-out function for adding an overall extra row.
-    /*function addExtraRow() {
-        const table = document.getElementById('extraTable').querySelector('tbody');
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="border">
-                <input type="text" name="extras[${extraIndex}][name]" placeholder="Name" class="p-1 border rounded extraName">
-            </td>
-            <td class="border">
-                <input type="number" name="extras[${extraIndex}][percent]" min="0" value="0"
-                       class="p-1 border rounded overallPercentInput" oninput="updateAllTotals()">
-            </td>
-            <td class="border overallExtraValue">
-                <input type="number" name="extras[${extraIndex}][value]" value="0" readonly class="p-1 border rounded bg-gray-100 w-full">
-            </td>
-            <td class="border">
-                <button type="button" onclick="this.closest('tr').remove(); updateAllTotals();" class="text-red-500">Remove</button>
-            </td>
-        `;
-        table.appendChild(row);
-        extraIndex++;
-        updateAllTotals();
-    } */
+// Initialize with first group
+if (sizeGroupSelector.options.length > 0) {
+    sizeGroupSelector.value = simulatedDB.sizeGroups[0].id;
+    populatePackSelector();
+}
 
-    // Helper function to get the sum of all pack quantities
-    function getCurrentTotalPackQty() {
-        let totalPackQty = 0;
-        document.querySelectorAll('[name^="colors"][name$="[pack_qty]"]').forEach(input => {
-            totalPackQty += parseInt(input.value) || 0;
-        });
-        return totalPackQty;
-    }
+// Add Pack block with size/ratio columns
+function addPack(packData) {
+    const totalRatio = Object.values(packData.ratios).reduce((a, b) => a + b, 0);
+
+    const ratioHeaderHTML = Object.entries(packData.ratios)
+        .map(([sizeId, ratio]) => {
+            const size = simulatedDB.sizes.find(s => String(s.id) === String(sizeId));
+            const sizeName = size ? size.name : `Size#${sizeId}`;
+            return `<th class="px-2 py-1">${sizeName} (${ratio})</th>`;
+        })
+        .join('');
+
+    const packBlock = document.createElement('div');
+    packBlock.id = `packBlock_${packIndex}`;
+    packBlock.dataset.packIndex = packIndex;
+    packBlock.dataset.packId = packData.id;
+    packBlock.dataset.totalRatio = totalRatio;
+    packBlock.className = 'bg-white p-6 rounded-xl shadow-lg space-y-6';
+
+    const selectedSizeGroupId = sizeGroupSelector.value;
 
 
-    // Main function to update all calculations on the page
-    function updateAllTotals() {
-        const orderQtyInput = document.getElementById('orderQty');
-        const orderQty = parseInt(orderQtyInput.value) || 0;
-        let totalPackQty = 0;
-        let totalActualQty = 0;
-        let totalExtraUsage = 0;
+    packBlock.innerHTML = `
+        <div class="flex justify-between items-center border-b pb-4 mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Pack ${packData.name}</h2>
+            <input type="hidden" name="packs[${packIndex}][sizeGroup_id]" value="${selectedSizeGroupId}">
+            <input type="hidden" name="packs[${packIndex}][pack_id]" value="${packData.id}">
+            <button type="button" class="btn btn-danger btn-sm" onclick="removePack(${packIndex})">Remove Pack</button>
+        </div>
+        <div class="mt-6">
+            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table class="w-full text-sm text-center">
+                    <thead class="bg-gray-800 text-white">
+                        <tr>
+                            <th>Color</th>
+                            <th>Pack Qty</th>
+                            <th>Extra %</th>
+                            ${ratioHeaderHTML}
+                            <th>Total</th>
+                            <th>Add-on</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="colorTable_${packIndex}"></tbody>
+                    <tfoot class="bg-gray-200 font-bold">
+                        <tr>
+                            <td class="text-right px-2">Pack Total</td>
+                            <td class="pack-qty-total">0</td>
+                            <td></td>
+                            <td colspan="${Object.keys(packData.ratios).length}"></td>
+                            <td class="cutting-total-display">0</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button type="button" class="btn btn-primary" onclick="addColor(${packIndex})">Add Color</button>
+            </div>
+        </div>
+    `;
+    packsContainer.appendChild(packBlock);
+    packIndex++;
+}
 
-        // Iterate through each color block
-        document.querySelectorAll('[data-color-index]').forEach(colorBlock => {
-            // Iterate through each pack block within the color
-            colorBlock.querySelectorAll('div.border.p-3.rounded-lg').forEach(packBlock => {
-                let packQtyInput = packBlock.querySelector('[name^="colors"][name$="[pack_qty]"]');
-                let packQty = parseInt(packQtyInput.value) || 0;
-                
-                const currentTotalExcludingThis = getCurrentTotalPackQty() - packQty;
-                if (orderQty > 0 && currentTotalExcludingThis + packQty > orderQty) {
-                    packQty = orderQty - currentTotalExcludingThis;
-                    packQtyInput.value = packQty;
-                }
-                
-                totalPackQty += packQty;
+// Add Color row
+function addColor(packIndex) {
+    const packBlock = document.getElementById(`packBlock_${packIndex}`);
+    const packId = packBlock.dataset.packId;
+    const packData = simulatedDB.packs.find(p => String(p.id) === String(packId));
+    const colorTableBody = document.getElementById(`colorTable_${packIndex}`);
+    const colorRowIndex = colorTableBody.children.length;
 
-                let packRatioSum = 0;
-                let ratioInputs = packBlock.querySelectorAll('[name^="colors"][name$="[ratio]"]');
+    const ratioRowHTML = Object.keys(packData.ratios)
+        .map(sizeId => {
+            const size = simulatedDB.sizes.find(s => String(s.id) === String(sizeId));
+            const sizeName = size ? size.name : `Size#${sizeId}`;
+            return `
+                <td>
+                    <span class="ratio-value-display" data-size-id="${sizeId}">0</span>
+                    <input type="hidden" name="packs[${packIndex}][colors][${colorRowIndex}][ratios][${sizeId}]" value="0" class="ratio-input-hidden" data-size-id="${sizeId}">
+                </td>
+            `;
+        })
+        .join('');
 
-                // Sum the ratios for this pack first
-                ratioInputs.forEach(ratioInput => {
-                    packRatioSum += parseInt(ratioInput.value) || 0;
-                });
+    const colorRow = document.createElement('tr');
+    colorRow.id = `colorRow_${packIndex}_${colorRowIndex}`;
+    colorRow.innerHTML = `
+        <td><input type="text" name="packs[${packIndex}][colors][${colorRowIndex}][color_name]" class="w-24 text-center p-1 rounded" placeholder="Color"></td>
+        <td><input type="text" name="packs[${packIndex}][colors][${colorRowIndex}][qty]" class="w-20 text-center p-1 pack-qty-input"></td>
+        <td><input type="number" name="packs[${packIndex}][colors][${colorRowIndex}][extra_usage]" class="w-20 text-center p-1 extra-usage-input" value="0" min="0"></td>
+        ${ratioRowHTML}
+        <td><span class="cutting-total-color-display font-bold">0</span></td>
+        <td>
+            <select name="packs[${packIndex}][colors][${colorRowIndex}][add_on]" class="w-24 p-1 rounded">
+                <option value="">Select</option>
+                @foreach ($addOns as $addOn)
+                    <option value="{{ $addOn->id }}">
+                        {{ $addOn->name }}
+                    </option>
+                @endforeach
+            </select>
+        </td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeColor(${packIndex}, ${colorRowIndex})">Remove</button></td>
+    `;
 
-                // Calculate the pack-specific extra quantity
-                const packPercent = parseFloat(packBlock.querySelector('[name$="[pack_extra_percent]"]').value) || 0;
-                const packExtraQty = Math.floor((packQty * packPercent) / 100);
-                packBlock.querySelector('[name$="[pack_extra_qty]"]').value = packExtraQty;
-                totalExtraUsage += packExtraQty;
+    colorTableBody.appendChild(colorRow);
 
-                // The new total quantity for this pack is the pack_qty plus the extra qty
-                const totalPackQtyWithExtra = packQty + packExtraQty;
+    // attach events
+    colorRow.querySelector('.pack-qty-input').addEventListener('input', updateAllTotals);
+    colorRow.querySelector('.extra-usage-input').addEventListener('input', updateAllTotals);
 
-                // Distribute this new total quantity across the ratios
-                packBlock.querySelectorAll('tbody tr').forEach(ratioRow => {
-                    let ratioValue = parseInt(ratioRow.querySelector('[name^="colors"][name$="[ratio]"]').value) || 0;
-                    let actualQty = packRatioSum > 0 ? Math.floor((totalPackQtyWithExtra / packRatioSum) * ratioValue) : 0;
-                    
-                    ratioRow.querySelector('[name^="colors"][name$="[actual_qty]"]').value = actualQty;
-                    
-                    totalActualQty += actualQty;
-                });
-            });
-        });
+    updateAllTotals();
+    attachQtyValidation();
+
+}
+
+// Remove Color
+function removeColor(packIndex, colorRowIndex) {
+    const row = document.getElementById(`colorRow_${packIndex}_${colorRowIndex}`);
+    if (row) row.remove();
+    updateAllTotals();
+}
+
+// Remove Pack
+function removePack(packIndex) {
+    const packBlock = document.getElementById(`packBlock_${packIndex}`);
+    if (packBlock) packBlock.remove();
+    updateAllTotals();
+}
+
+// Calculation + Totals
+function updateAllTotals() {
+    let totalExtraUsage = 0; // Declare it here to be a local variable for this function
+    let finalTotal = 0;
+
+    document.querySelectorAll('[id^="packBlock_"]').forEach(packBlock => {
+        const packId = packBlock.dataset.packId;
+        const packData = simulatedDB.packs.find(p => String(p.id) === String(packId));
+        const totalRatio = parseFloat(packBlock.dataset.totalRatio);
+
+        let packQtyTotal = 0;
+        let packCuttingTotal = 0;
         
-        // Update the order quantity display and button status
-        document.getElementById('totalOrderQty').textContent = totalPackQty;
-        const addColorBtn = document.getElementById('addColorBtn');
-        const limitMsg = document.getElementById('limitReachedMsg');
+        const colorTableBody = packBlock.querySelector(`#colorTable_${packBlock.dataset.packIndex}`);
+        colorTableBody.querySelectorAll('tr').forEach(row => {
+            const packQty = parseInt(row.querySelector('.pack-qty-input').value) || 0;
+            const extraUsage = parseFloat(row.querySelector('.extra-usage-input').value) || 0;
+            totalExtraUsage += packQty * (extraUsage / 100);
+            
+            const qtyWithExtra = packQty * (1 + extraUsage / 100);
+            const basePerRatio = qtyWithExtra / totalRatio;
 
-        if (orderQty > 0 && totalPackQty >= orderQty) {
-            addColorBtn.disabled = true;
-            limitMsg.classList.remove('hidden');
-        } else {
-            addColorBtn.disabled = false;
-            limitMsg.classList.add('hidden');
-        }
+            let totalForColor = 0;
+            Object.keys(packData.ratios).forEach(sizeId => {
+                const ratio = packData.ratios[sizeId];
+                const calculatedQty = Math.round(basePerRatio * ratio);
+                totalForColor += calculatedQty;
 
-        // Calculate and sum the overall extra usage from the commented out section
-        document.querySelectorAll('#extraTable tbody tr').forEach(row => {
-            const percent = parseFloat(row.querySelector('.overallPercentInput').value) || 0;
-            const value = Math.floor((totalActualQty * percent) / 100);
-            row.querySelector('.overallExtraValue input').value = value;
-            totalExtraUsage += value;
+                const display = row.querySelector(`.ratio-value-display[data-size-id="${sizeId}"]`);
+                const hidden = row.querySelector(`.ratio-input-hidden[data-size-id="${sizeId}"]`);
+                if (display) display.textContent = calculatedQty;
+                if (hidden) hidden.value = calculatedQty;
+            });
+
+            row.querySelector('.cutting-total-color-display').textContent = totalForColor;
+
+            packQtyTotal += packQty;
+            packCuttingTotal += totalForColor;
         });
 
-        // Calculate and update the final total
-        const finalTotal = totalActualQty + totalExtraUsage;
-        document.getElementById('actualTotal').textContent = totalActualQty;
-        document.getElementById('totalExtraUsage').textContent = totalExtraUsage;
-        document.getElementById('finalTotalDisplay').textContent = finalTotal;
-        document.getElementById('finalTotal').value = finalTotal;
-    }
-
-    // Auto-run updates on page load for edit mode
-    document.addEventListener('DOMContentLoaded', function () {
-        updateAllTotals();
+        packBlock.querySelector('.pack-qty-total').textContent = packQtyTotal;
+        packBlock.querySelector('.cutting-total-display').textContent = packCuttingTotal;
     });
 
+    const finalTotalInput = document.getElementById('finalTotal');
+    // Update global totals after all packs have been processed
+    const orderQty = parseInt(orderQtyInput.value) || 0;
+    const actualQty = orderQty + totalExtraUsage;
+    document.getElementById('totalOrderQty').textContent = orderQty;
+    document.getElementById('actualTotal').textContent = Math.round(actualQty);
+    document.getElementById('totalExtraUsage').textContent = totalExtraUsage.toFixed(2);
+    document.getElementById('finalTotalDisplay').textContent = orderQty + totalExtraUsage;
+    finalTotalInput.value = Math.round(orderQty + totalExtraUsage);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    populatePackSelector();
+    updateAllTotals();
+    
+    // The event listener is now much simpler.
+    orderQtyInput.addEventListener('input', updateAllTotals);
+});
 </script>
-@endsection
+
+</body>
+</html>

@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('pack_information', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('color_id')->constrained('colors')->onDelete('cascade');
-            $table->foreignId('pack_id')->nullable()->constrained('packs')->nullOnDelete();
-            $table->integer('pack_qty');
+            $table->foreignId('purchase_order_id')->constrained('purchase_orders')->onDelete('cascade');
+            // $table->foreignId('add_on_id')->constrained('add_ons')->onDelete('cascade');
+            $table->foreignId('pack_id')->constrained('packs')->onDelete('cascade');
             $table->timestamps();
         });
     }

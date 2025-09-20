@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('colors', function (Blueprint $table) {
+        Schema::create('ratios', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-            $table->string('color_name')->nullable();
-            $table->foreignId('size_group_id')->constrained('size_groups')->onDelete('cascade');
+            $table->foreignId('color_id')->constrained('colors')->onDelete('cascade');
+            $table->foreignId('size_id')->constrained('sizes')->onDelete('cascade');
+            $table->integer('qty');
             $table->timestamps();
         });
     }
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('colors');
+        Schema::dropIfExists('ratios');
     }
 };

@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('overall_extras', function (Blueprint $table) {
-            Schema::rename('extras', 'overall_extras');
+        Schema::create('add_ons', function (Blueprint $table) {
+            $table->id();
+            $table->string('name'); // e.g., Stone, Printing
+            $table->timestamps();
         });
     }
 
@@ -21,8 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('overall_extras', function (Blueprint $table) {
-            Schema::rename('overall_extras', 'extras');
-        });
+        Schema::dropIfExists('add_ons');
     }
 };

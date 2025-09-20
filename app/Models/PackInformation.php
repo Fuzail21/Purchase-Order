@@ -3,25 +3,31 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany; // ✅ add this
+use Illuminate\Database\Eloquent\Relations\BelongsTo; // ✅ add this too
 
 class PackInformation extends Model
 {
-    protected $table = 'pack_information';
+    use HasFactory;
 
-    protected $fillable = ['color_id','pack_name','pack_qty'];
+    protected $fillable = ['purchase_order_id', 'pack_id'];
 
-    public function color()
+    // Belongs to a Purchase Order
+    public function purchaseOrder(): BelongsTo
     {
-        return $this->belongsTo(Color::class);
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
-    public function ratios()
+    // Belongs to a Pack
+    public function pack(): BelongsTo
     {
-        return $this->hasMany(Ratio::class, 'packI_id');
+        return $this->belongsTo(Pack::class);
     }
 
-    public function pack()
+    // Has many Colors
+    public function colors(): HasMany
     {
-        return $this->belongsTo(Pack::class, 'pack_id');
+        return $this->hasMany(Color::class);
     }
 }

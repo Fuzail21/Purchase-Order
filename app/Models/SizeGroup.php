@@ -3,11 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class SizeGroup extends Model
 {
-    protected $fillable = ['group_name'];
+    use HasFactory;
 
-    public function colors() { return $this->hasMany(Color::class); }
+    protected $fillable = ['name'];
+
+    // One SizeGroup has many Packs
+    public function packs()
+    {
+        return $this->hasMany(Pack::class, 'sizeGroup_id');
+    }
 }
 

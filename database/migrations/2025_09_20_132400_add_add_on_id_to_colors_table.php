@@ -11,10 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('packs', function (Blueprint $table) {
-            $table->id();
-            $table->string('name'); // e.g. K, LK, BM
-            $table->timestamps();
+        Schema::table('colors', function (Blueprint $table) {
+            $table->foreignId('add_on_id')->nullable()->constrained('add_ons')->onDelete('set null')->after('extra_usage_qty');
         });
     }
 
@@ -23,6 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('packs');
+        Schema::table('colors', function (Blueprint $table) {
+            $table->dropForeign(['add_on_id']);
+            $table->dropColumn('add_on_id');
+        });
     }
 };

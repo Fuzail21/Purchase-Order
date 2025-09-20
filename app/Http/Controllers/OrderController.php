@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
+use App\Models\Size;
 use App\Models\Pack;
 use App\Models\PackInformation;
 use App\Models\Color;
 use App\Models\SizeGroup;
+use App\Models\PurchaseOrder;
+use App\Models\AddOn;
 use App\Models\Ratio;
-use App\Models\Extra;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,19 +25,53 @@ class OrderController extends Controller
     }
 
     // Show form with packs
-    public function create(){
+    public function create()
+    {
         $title = "New Order";
-        $packs = Pack::all();
-        $sizeGroups = SizeGroup::all();
-        return view('form.cutting_order', compact('packs', 'title', 'sizeGroups'));
+    
+        // Eager load relationships
+        $sizeGroups = SizeGroup::with('packs.sizes')->get();
+        $addOns = AddOn::all();
+
+    
+        // Convert to JS-friendly structure
+        $simulatedDB = [
+            'sizeGroups' => $sizeGroups->map(fn($group) => [
+                'id' => $group->id,
+                'name' => $group->name,
+            ]),
+            'sizes' => $sizeGroups->flatMap(function ($group) {
+                return $group->packs->flatMap(function ($pack) use ($group) {
+                    return $pack->sizes->map(fn($size) => [
+                        'id' => $size->id,
+                        'name' => $size->size_name,
+                        'size' => $size->size_name,
+                        'group' => $group->name,
+                    ]);
+                });
+            }),
+            'packs' => $sizeGroups->flatMap(function ($group) {
+                return $group->packs->map(function ($pack) use ($group) {
+                    return [
+                        'id' => $pack->id,
+                        'name' => $pack->name,
+                        'group' => $group->id,
+                        'ratios' => $pack->sizes->pluck('ratio', 'id'),
+                    ];
+                });
+            }),
+        ];
+    
+        return view('form.cutting_order', compact('title', 'simulatedDB', 'addOns'));
     }
 
     // Store Order
-    public function store(Request $request)
+    public function store1(Request $request)
     {
+        dd($request->all());
         DB::transaction(function () use ($request) {
             // Save Order
-            $order = new Order();
+            $order = new PurchaseOrder();
             $order->job_no = $request->job_no;
             $order->style_no = $request->style_no;
             $order->po_date = $request->po_date;
@@ -85,59 +120,143 @@ class OrderController extends Controller
                 }
             }
 
-            // Save Overall Extras
-            // if ($request->has('extras') && !empty($request->extras)) {
-            //     foreach ($request->extras as $extraData) {
-            //         if (!empty($extraData['name']) && !empty($extraData['percent'])) {
-            //             $extra = new Extra(); // Changed model name
-            //             $extra->order_id = $order->id;
-            //             $extra->name = $extraData['name'];
-            //             $extra->percent = $extraData['percent'];
-            //             $extra->value = $extraData['value'] ?? 0;
-            //             $extra->save();
-            //         }
-            //     }
-            // }
-
         });
-        $order = Order::findOrFail($id);
-        return redirect()->route('orders.pdf', $order->id)->with('success', 'Order created successfully.');
+        $latestOrder = Order::latest('id')->first();
+        return redirect()->route('orders.pdf', $latestOrder->id)->with('success', 'Order created successfully.');
     }
 
+    public function store(Request $request){
+        // Validate incoming data based on the new schema and incoming request parameters
+        // $request->validate([
+        //     'job_no' => 'required|string|max:255|unique:purchase_orders,po_number', // Map to po_number
+        //     'supplier_name' => 'required|string|max:255', // Map from buyer
+        //     'order_date' => 'required|date', // Map from po_date
+        //     'delivery_date' => 'nullable|date', // Map from ship_date
+        //     'fabrics' => 'nullable|string|max:255',
+        //     'gsm' => 'nullable|string|max:255',
+        //     'order_qty' => 'required|integer|min:1',
+        //     'title' => 'nullable|string|max:255',
+        //     'po_label' => 'nullable|string|max:255',
+        //     'care_label' => 'nullable|string|max:255',
+        //     'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        //     'finalTotal' => 'required|integer',
+        //     'packs' => 'required|array',
+        //     'packs.*.pack_id' => 'required|integer|exists:packs,id',
+        //     'packs.*.add_on_id' => 'required|integer|exists:add_ons,id',
+        //     'packs.*.colors' => 'required|array',
+        //     'packs.*.colors.*.color_name' => 'required|string',
+        //     'packs.*.colors.*.qty' => 'required|integer|min:0',
+        // ]);
+        dd($request->all());
+        DB::beginTransaction();
+            // Manually set the attributes
+            $order = new PurchaseOrder();
+            $order->job_no = $request->job_no;
+            $order->style_no = $request->style_no;
+            $order->po_date = $request->po_date;
+            $order->ship_date = $request->ship_date;
+            $order->fabrics = $request->fabrics;
+            $order->gsm = $request->gsm;
+            $order->buyer = $request->buyer;
+            $order->order_qty = $request->order_qty;
+            $order->title = $request->title;
+            $order->description = $request->description;
+            $order->po_label = $request->po_label;
+            $order->care_label = $request->care_label;
+            if ($request->hasFile('file')) {
+                $order->file_path = $request->file('file')->store('uploads', 'public');
+            }
+            $order->final_total = $request->finalTotal;
+            $order->save();
+
+            // Loop through the packs from the request
+            foreach ($request->packs as $packData) {
+                // Create a new instance of PackInformation
+                $packInfo = new PackInformation();
+                $packInfo->pack_id = $packData['pack_id'];
+                $packInfo->purchase_order_id = $order->id;
+                
+                // Use the relationship to link and save the child model
+                $order->packInformation()->save($packInfo);
+
+                // Loop through colors inside each pack
+                foreach ($packData['colors'] as $colorData) {
+                    // Create a new instance of Color
+                    $color = new Color();
+                    $color->color_name = $colorData['color_name'];
+                    $color->qty = $colorData['qty'];
+                    $color->extra_usage_qty = $colorData['extra_usage'] ?? 0; // Using extra_usage_qty
+                    $color->add_on_id = $colorData['add_on'] ?? null; // Associate AddOn if provided
+                    
+                    // Use the relationship to link and save the child model
+                    $packInfo->colors()->save($color);
+
+                    // Loop ratios for each color
+                    if (isset($colorData['ratios'])) {
+                        foreach ($colorData['ratios'] as $sizeId => $ratioQty) {
+                            // Create a new instance of Ratio
+                            $ratio = new Ratio();
+                            $ratio->color_id = $color->id;
+                            $ratio->size_id = $sizeId;
+                            $ratio->qty = $ratioQty;
+
+                            // Use the relationship to link and save the child model
+                            $color->ratios()->save($ratio);
+                        }
+                    }
+                }
+            }
+
+            // Commit the transaction if all database operations are successful
+            DB::commit();
+
+            $latestOrder = PurchaseOrder::latest('id')->first();
+            return redirect()->route('orders.pdf', $latestOrder->id)->with('success', 'Order created successfully.');
+    }
 
     // Generate PDF
     public function downloadPdf($id)
-    {
-        // Fetch the order with its related data.
-        $order = Order::with('colors.packs.ratios')->findOrFail($id);
+{
+    $purchaseOrder = PurchaseOrder::with([
+        'packInformation.colors.ratios.size',
+        'packInformation.colors.addOn',
+        'packInformation.pack.sizes',
+    ])->findOrFail($id);
+
+    // Group by sizeGroup_id + color_name
+    $grouped = $purchaseOrder->packInformation->groupBy(function ($pi) {
+        $sizeGroupId = $pi->pack->sizeGroup_id ?? 'no_group';
+        $colorName   = $pi->colors->first()->color_name ?? 'no_color';
+        return $sizeGroupId . '_' . $colorName;
         
-        // Load the view and set the paper size.
-        $pdf = PDF::loadView('orders.pdf', compact('order'))->setPaper('a4', 'landscape');
-        
-        // Stream the PDF to the browser for download.
-        // The filename is based on the order's job number.
-        return $pdf->stream('order_' . $order->job_no . '.pdf');
-    }
+    });
+    
+    $pdf = PDF::loadView('orders.pdf', [
+        'purchaseOrder' => $purchaseOrder,
+        'grouped'       => $grouped,
+    ])->setPaper('a4', 'landscape');
+
+    return $pdf->stream('order_' . $purchaseOrder->job_no . '.pdf');
+}
+
 
     // Show all orders
     public function index(){
         $title = "Orders List";
-        $orders = Order::with(['colors', 'extras'])
-        ->whereNull('deleted_at')
-        ->latest()
-        ->paginate(10);
+        $orders = PurchaseOrder::all()
+        ->whereNull('deleted_at');
 
         // Calculate Final Total for each order
-        foreach ($orders as $order) {
-            $extrasTotal = $order->extras->sum('value'); // sum all extra values
-            $order->final_total = $order->order_qty + $extrasTotal; // dynamic property
-        }
+        // foreach ($orders as $order) {
+        //     $extrasTotal = $order->extras->sum('value'); // sum all extra values
+        //     $order->final_total = $order->order_qty + $extrasTotal; // dynamic property
+        // }
         return view('orders.index', compact('orders', 'title'));
     }
 
     public function edit($id){
         $title = "Edit Order";
-        $order = Order::with(['colors','extras'])->findOrFail($id);
+        $order = PurchaseOrder::with(['colors','extras'])->findOrFail($id);
         $packs = Pack::all();
         $sizeGroups = SizeGroup::all();
         return view('form.cutting_order', compact('order','packs', 'title', 'sizeGroups')); // reuse same form
@@ -147,7 +266,7 @@ class OrderController extends Controller
     {
         DB::transaction(function () use ($request, $id) {
             // Find Order
-            $order = Order::findOrFail($id);
+            $order = PurchaseOrder::findOrFail($id);
 
             // Update Order
             $order->job_no = $request->job_no;
@@ -204,34 +323,16 @@ class OrderController extends Controller
                     }
                 }
             }
-
-            /** --------------------------
-             * Overall Extras
-             * ------------------------- */
-            // Extra::where('order_id', $order->id)->delete();
-
-            // if ($request->has('extras') && !empty($request->extras)) {
-            //     foreach ($request->extras as $extraData) {
-            //         if (!empty($extraData['name']) && !empty($extraData['percent'])) {
-            //             $extra = new Extra();
-            //             $extra->order_id = $order->id;
-            //             $extra->name = $extraData['name'];
-            //             $extra->percent = $extraData['percent'];
-            //             $extra->value = $extraData['value'] ?? 0;
-            //             $extra->save();
-            //         }
-            //     }
-            // }
             
         });
-        $order = Order::findOrFail($id);
+        $order = PurchaseOrder::findOrFail($id);
         return redirect()->route('orders.pdf', $order->id)->with('success', 'Order updated successfully.');
     }
 
 
     // Soft delete
     public function destroy($id){
-        $order = Order::findOrFail($id);
+        $order = PurchaseOrder::findOrFail($id);
         $order->delete(); // will mark deleted_at
         return redirect()->route('orders.index')->with('success', 'Order deleted successfully!');
     }

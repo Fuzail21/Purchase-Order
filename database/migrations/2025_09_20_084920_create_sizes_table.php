@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('size_groups', function (Blueprint $table) {
+        Schema::create('sizes', function (Blueprint $table) {
             $table->id();
-            $table->string('group_name');
+            $table->foreignId('pack_id')->constrained('packs')->onDelete('cascade');
+            $table->string('size_name'); // e.g., S, M, L
+            $table->integer('ratio');
             $table->timestamps();
         });
     }
@@ -23,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('size_groups');
+        Schema::dropIfExists('sizes');
     }
 };
