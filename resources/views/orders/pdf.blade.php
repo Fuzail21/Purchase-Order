@@ -185,12 +185,17 @@
         {{-- Packs / Colors / Ratios --}}
         @foreach ($grouped as $sizeGroupId => $packInfos)
     @php
-        // Collect all unique sizes in this group
-        $allSizes = collect();
+        // Create a master list of unique, sorted size names for the table headers
+        $allSizeObjects = collect();
         foreach ($packInfos as $packInfo) {
-            $allSizes = $allSizes->merge($packInfo->pack->sizes);
+            $allSizeObjects = $allSizeObjects->merge($packInfo->pack->sizes);
         }
-        $allSizes = $allSizes->unique('id');
+        $sizeOrder = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
+        $uniqueSizeNames = $allSizeObjects->pluck('size_name')->unique()->sort(function ($a, $b) use ($sizeOrder) {
+            $pos_a = array_search($a, $sizeOrder);
+            $pos_b = array_search($b, $sizeOrder);
+            return $pos_a - $pos_b;
+        });
 
         $grandCuttingTotal = 0;
         $grandActualTotal = 0;
@@ -206,15 +211,20 @@
                 $tableCuttingTotal = 0;
                 $tableActualTotal = 0;
                 $sizeSums = [];
-                foreach ($allSizes as $size) $sizeSums[$size->id] = 0;
+                foreach ($uniqueSizeNames as $sizeName) $sizeSums[$sizeName] = 0;
             @endphp
 
             <table class="tight new-table">
                 <tr class="shade bold caps">
                     <td>COLOR</td>
+                    <td>ADD-ON</td>
                     <td>PACK#</td>
-                    @foreach ($allSizes as $size)
-                        <th>{{ $size->size_name }}/{{ $size->ratio }} </th>
+                    @foreach ($uniqueSizeNames as $sizeName)
+                        @php
+                            // Find a size object to get the ratio for the header, if it exists in this pack
+                            $headerSize = $packInfo->pack->sizes->firstWhere('size_name', $sizeName);
+                        @endphp
+                        <th>{{ $sizeName }}/{{ $headerSize->ratio ?? '' }} </th>
                     @endforeach
                     <td>CUTTING TOTAL</td>
                     <td>ACTUAL</td>
@@ -231,15 +241,20 @@
                         $tableActualTotal += $actualTotal;
                         $grandCuttingTotal += $cuttingTotal;
                         $grandActualTotal += $actualTotal;
-                        $sizeSums = $sizeSums ?? [];
                     @endphp
                     <tr>
                         <td>{{ $color->color_name }}</td>
+                        <td>{{ $color->addOn->name ?? '-' }}</td>
                         <td>{{ $packInfo->pack->name }}</td>
-                        @foreach ($allSizes as $size)
+                        @foreach ($uniqueSizeNames as $sizeName)
                             @php
-                                $val = $color->ratios->where('size_id', $size->id)->sum('qty');
-                                $sizeSums[$size->id] = ($sizeSums[$size->id] ?? 0) + $val;
+                                // Find the specific size_id for the current size name within the pack's sizes
+                                $sizeForPack = $packInfo->pack->sizes->firstWhere('size_name', $sizeName);
+                                $val = 0;
+                                if ($sizeForPack) {
+                                    $val = $color->ratios->where('size_id', $sizeForPack->id)->sum('qty');
+                                }
+                                $sizeSums[$sizeName] += $val;
                             @endphp
                             <td>{{ $val }}</td>
                         @endforeach
@@ -249,9 +264,9 @@
                 @endforeach
 
                 <tr class="shade bold">
-                    <td colspan="2">TOTAL</td>
-                    @foreach ($allSizes as $size)
-                        <td>{{ $sizeSums[$size->id] }}</td>
+                    <td colspan="3">TOTAL</td>
+                    @foreach ($uniqueSizeNames as $sizeName)
+                        <td>{{ $sizeSums[$sizeName] }}</td>
                     @endforeach
                     <td>{{ ceil($tableCuttingTotal) }}</td>
                     <td>{{ $tableActualTotal }}</td>
@@ -277,46 +292,47 @@
                     $tableCuttingTotal = 0;
                     $tableActualTotal = 0;
                     $sizeSums = [];
-                    foreach ($allSizes as $size) $sizeSums[$size->id] = 0;
+                    foreach ($uniqueSizeNames as $sizeName) $sizeSums[$sizeName] = 0;
                 @endphp
 
                 <table class="tight new-table">
-                   @foreach ($colorPacks as $pInfo)
+                    {{-- Unified Ratio Table --}}
+                    <tr class="shade bold caps">
+                        <td colspan="3">RATIO</td>
+                        @foreach ($uniqueSizeNames as $sizeName)
+                            <th>{{ $sizeName }}</th>
+                        @endforeach
+                        <td>TOTAL</td>
+                        <td></td>
+                    </tr>
+                    @foreach ($colorPacks as $pInfo)
                         <tr>
-                            <td colspan="3" class="shade bold">
-                                RATIO# {{ $pInfo->pack->name }} PACK
+                            <td colspan="3" class="bold">
+                                {{ $pInfo->pack->name }} PACK
                             </td>
-
                             @php
                                 $packRatioTotal = 0;
                             @endphp
-
-                            @foreach ($allSizes as $size)
+                            @foreach ($uniqueSizeNames as $sizeName)
                                 @php
-                                    // check if this pack has this size
-                                    $packSize = $pInfo->pack->sizes->firstWhere('id', $size->id);
+                                    $packSize = $pInfo->pack->sizes->firstWhere('size_name', $sizeName);
                                     $ratioVal = $packSize->ratio ?? 0;
                                     $packRatioTotal += $ratioVal;
                                 @endphp
-
-                                @if($ratioVal > 0)
-                                    <td>{{ $size->size_name }}/{{ $ratioVal }}</td>
-                                @else
-                                    <td></td>
-                                @endif
+                                <td>{{ $ratioVal > 0 ? $ratioVal : '' }}</td>
                             @endforeach
-
-                            <td class="shade bold">{{ $packRatioTotal }}</td>
+                            <td class="bold">{{ $packRatioTotal }}</td>
                             <td></td>
                         </tr>
                     @endforeach
 
+                    {{-- Quantity Table --}}
                     <tr class="shade bold caps">
                         <td>COLOR</td>
                         <td>ADD-ON</td>
                         <td>PACK#</td>
-                        @foreach ($allSizes as $size)
-                            <th>{{ $size->size_name }}</th>
+                        @foreach ($uniqueSizeNames as $sizeName)
+                            <th>{{ $sizeName }}</th>
                         @endforeach
                         <td>CUTTING TOTAL</td>
                         <td>ACTUAL</td>
@@ -340,10 +356,14 @@
                                     <td>{{ $c->color_name }}</td>
                                     <td>{{ $c->addOn->name ?? '-' }}</td>
                                     <td>{{ $pInfo->pack->name }}</td>
-                                    @foreach ($allSizes as $size)
+                                    @foreach ($uniqueSizeNames as $sizeName)
                                         @php
-                                            $val = $c->ratios->where('size_id', $size->id)->sum('qty');
-                                            $sizeSums[$size->id] += $val;
+                                            $sizeForPack = $pInfo->pack->sizes->firstWhere('size_name', $sizeName);
+                                            $val = 0;
+                                            if ($sizeForPack) {
+                                                $val = $c->ratios->where('size_id', $sizeForPack->id)->sum('qty');
+                                            }
+                                            $sizeSums[$sizeName] += $val;
                                         @endphp
                                         <td>{{ $val }}</td>
                                     @endforeach
@@ -356,8 +376,8 @@
 
                     <tr class="shade bold">
                         <td colspan="3">TOTAL</td>
-                        @foreach ($allSizes as $size)
-                            <td>{{ $sizeSums[$size->id] }}</td>
+                        @foreach ($uniqueSizeNames as $sizeName)
+                            <td>{{ $sizeSums[$sizeName] }}</td>
                         @endforeach
                         <td>{{ ceil($tableCuttingTotal) }}</td>
                         <td>{{ $tableActualTotal }}</td>
@@ -367,7 +387,7 @@
             @endif
         @endif
     @endforeach
-@endforeach
+        @endforeach
 
 
 
