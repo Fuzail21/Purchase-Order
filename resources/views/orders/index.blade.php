@@ -18,8 +18,6 @@
                                 <th class="border px-4 py-3">Job No</th>
                                 <th class="border px-4 py-3">Style No</th>
                                 <th class="border px-4 py-3">Buyer</th>
-                                <th class="border px-4 py-3">Body Color</th>
-                                <th class="border px-4 py-3">Pack</th>
                                 <th class="border px-4 py-3">Order Qty</th>
                                 <th class="border px-4 py-3">Final Total</th>
                                 <th class="border px-4 py-3">Actions</th>
@@ -31,8 +29,6 @@
                                     <td class="border px-4 py-3 font-medium text-gray-800">{{ $order->job_no }}</td>
                                     <td class="border px-4 py-3">{{ $order->style_no }}</td>
                                     <td class="border px-4 py-3">{{ $order->buyer }}</td>
-                                    <td class="border px-4 py-3">{{ $order->body_color }}</td>
-                                    <td class="border px-4 py-3">{{ $order->pack->name ?? '-' }}</td>
                                     <td class="border px-4 py-3">{{ $order->order_qty }}</td>
                                     <td class="border px-4 py-3 font-bold text-green-600">{{ $order->final_total }}</td>
                                     <td class="border px-4 py-3 space-x-2">

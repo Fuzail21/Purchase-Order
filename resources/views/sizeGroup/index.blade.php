@@ -23,7 +23,7 @@
                 <tbody>
                     @forelse($sizeGroup as $size)
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="border px-4 py-3">{{ $size->group_name }}</td>
+                            <td class="border px-4 py-3">{{ $size->name }}</td>
                             <td class="border px-4 py-3">
                                 <form action="{{ route('size.destroy', $size->id) }}" method="POST"
                                       onsubmit="return confirm('Are you sure?')" class="inline-block">

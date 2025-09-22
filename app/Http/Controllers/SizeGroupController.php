@@ -18,7 +18,7 @@ class SizeGroupController extends Controller
     {
 
         $sizeGroup = new SizeGroup();
-        $sizeGroup->group_name = $request->name;
+        $sizeGroup->name = $request->name;
         $sizeGroup->save();
 
         return redirect()->route('size.index')->with('success', 'Size Group added successfully.');
@@ -27,7 +27,19 @@ class SizeGroupController extends Controller
     public function destroy($id)
     {
         $sizeGroup = SizeGroup::findOrFail($id);
+
+        // Find all packs associated with this size group
+        $packsToDelete = $sizeGroup->packs;
+
+        // Loop through each pack and delete it (this also deletes its sizes)
+        foreach ($packsToDelete as $pack) {
+            $pack->sizes()->delete();
+            $pack->delete();
+        }
+
+        // Finally, delete the size group itself
         $sizeGroup->delete();
+
         return redirect()->route('size.index')->with('success', 'Size Group deleted successfully.');
     }
 }

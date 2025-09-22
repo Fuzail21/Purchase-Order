@@ -247,7 +247,12 @@
                 <!-- Pack blocks will be dynamically added here -->
             </div>
 
-            <button type="submit" id="formSubmit" class="btn btn-primary w-full md:w-auto">Save Order</button>
+            <button type="submit" id="formSubmit" 
+                class="px-6 py-2 bg-black text-white font-semibold text-sm 
+                rounded-xl shadow-md hover:bg-gray-900 
+                focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 
+                transition-all duration-300 ease-in-out w-full md:w-auto">
+            Save Order</button>
         <form>
     </div>
 
@@ -429,57 +434,95 @@ function addPack(packData) {
 }
 
 // Add Color row
-function addColor(packIndex) {
-    const packBlock = document.getElementById(`packBlock_${packIndex}`);
-    const packId = packBlock.dataset.packId;
-    const packData = simulatedDB.packs.find(p => String(p.id) === String(packId));
-    const colorTableBody = document.getElementById(`colorTable_${packIndex}`);
-    const colorRowIndex = colorTableBody.children.length;
+function addColor(packIndex, colorData) {
+        // Find the pack block and pack data
+        const packBlock = document.getElementById(`packBlock_${packIndex}`);
+        if (!packBlock) {
+            console.error(`Pack block with index ${packIndex} not found.`);
+            return;
+        }
 
-    const ratioRowHTML = Object.keys(packData.ratios)
-        .map(sizeId => {
-            const size = simulatedDB.sizes.find(s => String(s.id) === String(sizeId));
-            const sizeName = size ? size.name : `Size#${sizeId}`;
-            return `
-                <td>
-                    <span class="ratio-value-display" data-size-id="${sizeId}">0</span>
-                    <input type="hidden" name="packs[${packIndex}][colors][${colorRowIndex}][ratios][${sizeId}]" value="0" class="ratio-input-hidden" data-size-id="${sizeId}">
-                </td>
-            `;
-        })
-        .join('');
+        const packId = packBlock.dataset.packId;
+        const packData = simulatedDB.packs.find(p => String(p.id) === String(packId));
+        if (!packData) {
+            console.error(`Pack data with ID ${packId} not found in simulatedDB.`);
+            return;
+        }
 
-    const colorRow = document.createElement('tr');
-    colorRow.id = `colorRow_${packIndex}_${colorRowIndex}`;
-    colorRow.innerHTML = `
-        <td><input type="text" name="packs[${packIndex}][colors][${colorRowIndex}][color_name]" class="w-24 text-center p-1 rounded" placeholder="Color"></td>
-        <td><input type="text" name="packs[${packIndex}][colors][${colorRowIndex}][qty]" class="w-20 text-center p-1 pack-qty-input"></td>
-        <td><input type="number" name="packs[${packIndex}][colors][${colorRowIndex}][extra_usage]" class="w-20 text-center p-1 extra-usage-input" value="0" min="0"></td>
-        ${ratioRowHTML}
-        <td><span class="cutting-total-color-display font-bold">0</span></td>
-        <td>
+        const colorTableBody = document.getElementById(`colorTable_${packIndex}`);
+        const colorRowIndex = colorTableBody.children.length;
+
+        const ratioRowHTML = Object.keys(packData.ratios)
+            .map(sizeId => {
+                const size = simulatedDB.sizes.find(s => String(s.id) === String(sizeId));
+                const sizeName = size ? size.name : `Size#${sizeId}`;
+                const calculatedQty = colorData && colorData.ratios ? colorData.ratios[sizeId] || 0 : 0;
+                return `
+                    <td>
+                        <span class="ratio-value-display" data-size-id="${sizeId}">${calculatedQty}</span>
+                        <input type="hidden" name="packs[${packIndex}][colors][${colorRowIndex}][ratios][${sizeId}]" value="${calculatedQty}" class="ratio-input-hidden" data-size-id="${sizeId}">
+                    </td>
+                `;
+            })
+            .join('');
+        
+        const addOnOptions = `
             <select name="packs[${packIndex}][colors][${colorRowIndex}][add_on]" class="w-24 p-1 rounded">
                 <option value="">Select</option>
                 @foreach ($addOns as $addOn)
-                    <option value="{{ $addOn->id }}">
+                    <option value="{{ $addOn->id }}" ${colorData && colorData.add_on == '{{ $addOn->id }}' ? 'selected' : ''}>
                         {{ $addOn->name }}
                     </option>
                 @endforeach
             </select>
-        </td>
-        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeColor(${packIndex}, ${colorRowIndex})">Remove</button></td>
-    `;
+        `;
 
-    colorTableBody.appendChild(colorRow);
+        const colorRow = document.createElement('tr');
+        colorRow.id = `colorRow_${packIndex}_${colorRowIndex}`;
+        colorRow.innerHTML = `
+            <td><input type="text" name="packs[${packIndex}][colors][${colorRowIndex}][color_name]" class="w-24 text-center p-1 rounded" placeholder="Color" value="${colorData ? colorData.color_name : ''}"></td>
+            <td><input type="number" name="packs[${packIndex}][colors][${colorRowIndex}][qty]" class="w-20 text-center p-1 pack-qty-input" value="${colorData ? colorData.qty : ''}"></td> 
+            <td><input type="number" name="packs[${packIndex}][colors][${colorRowIndex}][extra_usage]" class="w-20 text-center p-1 extra-usage-input" value="${colorData ? colorData.extra_usage : 0}" min="0"></td>
+            ${ratioRowHTML}
+            <td><span class="cutting-total-color-display font-bold">${colorData ? (colorData.qty * (1 + (colorData.extra_usage / 100))) : 0}</span></td>
+            <td>${addOnOptions}</td>
+            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeColor(${packIndex}, ${colorRowIndex})">Remove</button></td>
+        `;
 
-    // attach events
-    colorRow.querySelector('.pack-qty-input').addEventListener('input', updateAllTotals);
-    colorRow.querySelector('.extra-usage-input').addEventListener('input', updateAllTotals);
+        colorTableBody.appendChild(colorRow);
+        
+        colorRow.querySelector('.pack-qty-input').addEventListener('input', updateAllTotals);
+        colorRow.querySelector('.extra-usage-input').addEventListener('input', updateAllTotals);
+    }
+    
+    // Initial Population Script for Editing
+    @if(isset($existingPacks))
+        document.addEventListener('DOMContentLoaded', () => {
+        const existingPacks = @json($existingPacks);
+        
+        existingPacks.forEach(packData => {
+            // First, find the full pack details from the simulated DB
+            const fullPack = simulatedDB.packs.find(p => String(p.id) === String(packData.id));
+            
+            if (fullPack) {
+                // Add the pack block
+                addPack(fullPack);
+                const currentPackIndex = packIndex - 1; // Correct index after adding the pack
+                
+                // Now, add the colors to this pack block
+                packData.colors.forEach(colorData => {
+                    addColor(currentPackIndex, colorData);
+                });
+            } else {
+                console.error(`Pack with ID ${packData.id} not found in database.`);
+            }
+        });
 
-    updateAllTotals();
-    attachQtyValidation();
-
-}
+        // Run totals and validation after all elements are added
+        updateAllTotals();
+        attachQtyValidation();
+    });
+    @endif
 
 // Remove Color
 function removeColor(packIndex, colorRowIndex) {
@@ -542,7 +585,7 @@ function updateAllTotals() {
     const finalTotalInput = document.getElementById('finalTotal');
     // Update global totals after all packs have been processed
     const orderQty = parseInt(orderQtyInput.value) || 0;
-    const actualQty = orderQty + totalExtraUsage;
+    const actualQty = orderQty;
     document.getElementById('totalOrderQty').textContent = orderQty;
     document.getElementById('actualTotal').textContent = Math.round(actualQty);
     document.getElementById('totalExtraUsage').textContent = totalExtraUsage.toFixed(2);

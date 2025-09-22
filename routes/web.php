@@ -27,15 +27,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])->name('orders.edit');
-    Route::post('/orders/{id}', [OrderController::class, 'update'])->name('orders.update');
+    Route::put('/orders/{id}', [OrderController::class, 'update'])->name('orders.update');
     Route::get('/orders/pdf/{id}', [OrderController::class, 'downloadPdf'])->name('orders.pdf');
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
 
 
     // Pack Management
-    Route::get('/packs', [PackController::class, 'index'])->name('packs.index');
-    Route::post('/packs', [PackController::class, 'store'])->name('packs.store');
+    Route::get('/packs/list', [PackController::class, 'index'])->name('packs.index');
+    Route::get('/packs/create', [PackController::class, 'create'])->name('packs.create');
+    Route::post('/packs', [PackController::class, 'store'])->name('packs.store');    
+    Route::get('/packs/{id}/edit', [PackController::class, 'edit'])->name('packs.edit');
+    Route::put('/packs/{id}', [PackController::class, 'update'])->name('packs.update');
     Route::delete('/packs/{id}', [PackController::class, 'destroy'])->name('packs.destroy');
 
     // Size Group Management

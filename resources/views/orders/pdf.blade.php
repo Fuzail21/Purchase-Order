@@ -214,7 +214,7 @@
                     <td>COLOR</td>
                     <td>PACK#</td>
                     @foreach ($allSizes as $size)
-                        <th>{{ $size->size_name }}</th>
+                        <th>{{ $size->size_name }}/{{ $size->ratio }} </th>
                     @endforeach
                     <td>CUTTING TOTAL</td>
                     <td>ACTUAL</td>
@@ -243,7 +243,7 @@
                             @endphp
                             <td>{{ $val }}</td>
                         @endforeach
-                        <td>{{ $cuttingTotal }}</td>
+                        <td>{{ ceil($cuttingTotal) }}</td>
                         <td>{{ $actualTotal }}</td>
                     </tr>
                 @endforeach
@@ -253,7 +253,7 @@
                     @foreach ($allSizes as $size)
                         <td>{{ $sizeSums[$size->id] }}</td>
                     @endforeach
-                    <td>{{ $tableCuttingTotal }}</td>
+                    <td>{{ ceil($tableCuttingTotal) }}</td>
                     <td>{{ $tableActualTotal }}</td>
                 </tr>
             </table>
@@ -281,6 +281,36 @@
                 @endphp
 
                 <table class="tight new-table">
+                   @foreach ($colorPacks as $pInfo)
+                        <tr>
+                            <td colspan="3" class="shade bold">
+                                RATIO# {{ $pInfo->pack->name }} PACK
+                            </td>
+
+                            @php
+                                $packRatioTotal = 0;
+                            @endphp
+
+                            @foreach ($allSizes as $size)
+                                @php
+                                    // check if this pack has this size
+                                    $packSize = $pInfo->pack->sizes->firstWhere('id', $size->id);
+                                    $ratioVal = $packSize->ratio ?? 0;
+                                    $packRatioTotal += $ratioVal;
+                                @endphp
+
+                                @if($ratioVal > 0)
+                                    <td>{{ $size->size_name }}/{{ $ratioVal }}</td>
+                                @else
+                                    <td></td>
+                                @endif
+                            @endforeach
+
+                            <td class="shade bold">{{ $packRatioTotal }}</td>
+                            <td></td>
+                        </tr>
+                    @endforeach
+
                     <tr class="shade bold caps">
                         <td>COLOR</td>
                         <td>ADD-ON</td>
@@ -317,7 +347,7 @@
                                         @endphp
                                         <td>{{ $val }}</td>
                                     @endforeach
-                                    <td>{{ $cuttingTotal }}</td>
+                                    <td>{{ ceil($cuttingTotal) }}</td>
                                     <td>{{ $actualTotal }}</td>
                                 </tr>
                             @endif
@@ -329,7 +359,7 @@
                         @foreach ($allSizes as $size)
                             <td>{{ $sizeSums[$size->id] }}</td>
                         @endforeach
-                        <td>{{ $tableCuttingTotal }}</td>
+                        <td>{{ ceil($tableCuttingTotal) }}</td>
                         <td>{{ $tableActualTotal }}</td>
                     </tr>
                 </table>
@@ -378,10 +408,10 @@
                             <td class="bold" style="width:30%; text-align:right;">{{ $purchaseOrder->final_total  }}</td>
                         </tr>
                         <tr>
-                            <td class="photo-box" colspan="2" style="padding-top:8px; text-align:center;">
+                            <td class="photo-box" colspan="2" style="padding-top:4px; text-align:center;">
                                 @if (!empty($purchaseOrder->file_path))
                                     <img src="{{ public_path('storage/' . $purchaseOrder->file_path) }}" alt="Garment"
-                                        width="120">
+                                        width="200">
                                 @else
                                     <span class="small">No Image</span>
                                 @endif
