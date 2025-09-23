@@ -200,11 +200,6 @@
                     </div>
                 </div>
 
-                <!-- Limit Message -->
-                <div id="limitReachedMsg" 
-                     class="p-2 bg-red-100 text-red-700 rounded-lg text-sm text-center font-semibold hidden">
-                    Order quantity limit reached. Cannot add more items.
-                </div>
             </section>
 
 
@@ -229,6 +224,18 @@
                 </div>
             </div>
 
+            
+            <!-- Dynamic Packs Container -->
+            <div id="packsContainer" class="space-y-8">
+                <!-- Pack blocks will be dynamically added here -->
+            </div>
+
+            <!-- Limit Message -->
+                <div id="limitReachedMsg" 
+                     class="p-2 bg-red-100 text-red-700 rounded-lg text-sm text-center font-semibold hidden">
+                    Order quantity limit reached. Cannot add more items.
+                </div>
+
             <!-- Add Pack Section -->
             <div class="bg-white p-6 rounded-xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
                 <h2 class="text-xl font-semibold text-gray-700">Add a New Pack</h2>
@@ -241,10 +248,6 @@
                     </select>
                     <button type="button" id="addPackBtn" class="btn btn-primary w-full md:w-auto">Add Pack</button>
                 </div>
-            </div>
-            <!-- Dynamic Packs Container -->
-            <div id="packsContainer" class="space-y-8">
-                <!-- Pack blocks will be dynamically added here -->
             </div>
 
             <button type="submit" id="formSubmit" 
@@ -276,7 +279,7 @@ const orderQtyInput = document.getElementById("orderQty");
 let errorMsg = document.createElement("p");
 errorMsg.className = "text-red-600 text-sm mt-1 hidden";
 errorMsg.id = "qtyErrorMsg";
-orderQtyInput.parentNode.appendChild(errorMsg);
+packsContainer.parentNode.appendChild(errorMsg);
 
 // Function to calculate total color qty
 function calculateTotalColorQty() {
@@ -582,12 +585,50 @@ function updateAllTotals() {
         packBlock.querySelector('.cutting-total-display').textContent = packCuttingTotal;
     });
 
+        function calculateTotalQty(e) {
+    let total = 0;
+    const orderQtyInput = document.getElementById("orderQty");
+    const orderQty = parseInt(orderQtyInput.value) || 0;
+    const limitReachedMsg = document.getElementById("limitReachedMsg");
+
+    // Get all qty inputs
+    document.querySelectorAll(".pack-qty-input").forEach(input => {
+        let val = parseFloat(input.value) || 0;
+        total += val;
+    });
+
+    // Show in #actualTotal
+    document.getElementById("actualTotal").textContent = Math.round(total);
+
+    // Validation: actual must not exceed orderQty
+    if (total > orderQty) {
+        limitReachedMsg.classList.remove("hidden");
+        formSubmit.disabled = true; // disable on error
+    } else {
+        limitReachedMsg.classList.add("hidden");
+        formSubmit.disabled = false; // enable when valid
+    }
+    // if (e && e.target.classList.contains("pack-qty-input")) { // e.target.value = "0"; calculateTotalQty(); // re-run after clearing }
+
+}
+
+// Run once on page load
+calculateTotalQty();
+
+// Recalculate whenever input changes
+document.addEventListener("input", function (e) {
+    if (e.target.classList.contains("pack-qty-input")) {
+        calculateTotalQty(e);
+    }
+});
+
+
     const finalTotalInput = document.getElementById('finalTotal');
     // Update global totals after all packs have been processed
     const orderQty = parseInt(orderQtyInput.value) || 0;
     const actualQty = orderQty;
     document.getElementById('totalOrderQty').textContent = orderQty;
-    document.getElementById('actualTotal').textContent = Math.round(actualQty);
+    // document.getElementById('actualTotal').textContent = Math.round(actualQty);
     document.getElementById('totalExtraUsage').textContent = totalExtraUsage.toFixed(2);
     document.getElementById('finalTotalDisplay').textContent = orderQty + totalExtraUsage;
     finalTotalInput.value = Math.round(orderQty + totalExtraUsage);

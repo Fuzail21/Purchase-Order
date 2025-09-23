@@ -32,6 +32,7 @@
             <a href="{{ route('orders.create') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">+ New Order</a>
             <a href="{{ route('size.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Size Group</a>
             <a href="{{ route('packs.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Packs</a>
+            <a href="{{ route('addOn.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Add-Ons</a>
             <a href="{{ route('settings') }}" class="block px-4 py-2 rounded hover:bg-gray-100 font-medium">Settings</a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf

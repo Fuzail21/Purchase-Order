@@ -5,6 +5,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PackController;
 use App\Http\Controllers\SizeGroupController;
+use App\Http\Controllers\AddOnController;
 
 
 Route::get('/', function () {
@@ -45,6 +46,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/size', [SizeGroupController::class, 'index'])->name('size.index');
     Route::post('/size', [SizeGroupController::class, 'store'])->name('size.store');
     Route::delete('/size/{id}', [SizeGroupController::class, 'destroy'])->name('size.destroy');
+
+    Route::get('/add-on', [AddOnController::class, 'index'])->name('addOn.index');
+    Route::post('/add-on', [AddOnController::class, 'store'])->name('addOn.store');
+    Route::delete('/add-on/{id}', [AddOnController::class, 'destroy'])->name('addOn.destroy');
 
     // Settings
     Route::get('/setting', [OrderController::class, 'setting'])->name('settings');
