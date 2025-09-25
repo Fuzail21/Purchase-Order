@@ -59,7 +59,7 @@
                     <!-- Size Group Dropdown -->
                     <div>
                         <label for="sizeGroupSelector" class="block text-gray-700 font-medium mb-1">Size Group</label>
-                        <select id="sizeGroupSelector" name="size_group_id" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                        <select id="sizeGroupSelector" name="size_group_id" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" required>
                             @foreach($sizeGroups as $group)
                                 <option value="{{ $group->id }}" @if(isset($pack) && $group->id == $pack->size_group_id) selected @endif>{{ $group->name }}</option>
                             @endforeach
@@ -68,7 +68,7 @@
                     <!-- Pack Name Input -->
                     <div>
                         <label for="packNameInput" class="block text-gray-700 font-medium mb-1">Pack Name</label>
-                        <input type="text" id="packNameInput" name="name" value="@if(isset($pack)){{ $pack->name }}@endif" placeholder="Enter pack name" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" id="packNameInput" name="name" value="@if(isset($pack)){{ $pack->name }}@endif" placeholder="Enter pack name" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
             </section>
@@ -95,10 +95,10 @@
                                 <tr class="bg-gray-50 text-gray-700 border-b border-gray-200">
                                     <td class="p-2 w-1/2">
                                         <input type="hidden" name="ratios[{{ $loop->index }}][id]" value="{{ $size->id }}">
-                                        <input type="text" name="ratios[{{ $loop->index }}][size_name]" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Size (e.g., L)" value="{{ $size->size_name }}">
+                                        <input type="text" required name="ratios[{{ $loop->index }}][size_name]" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Size (e.g., L)" value="{{ $size->size_name }}">
                                     </td>
                                     <td class="p-2 w-1/2">
-                                        <input type="number" name="ratios[{{ $loop->index }}][ratio]" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Ratio (e.g., 1)" value="{{ $size->ratio }}">
+                                        <input type="number" required name="ratios[{{ $loop->index }}][ratio]" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Ratio (e.g., 1)" value="{{ $size->ratio }}">
                                     </td>
                                     <td class="p-2">
                                         <button type="button" class="btn btn-danger btn-sm remove-ratio-btn">Remove</button>
@@ -136,10 +136,10 @@
             row.classList.add('bg-gray-50', 'text-gray-700', 'border-b', 'border-gray-200');
             row.innerHTML = `
                 <td class="p-2 w-1/2">
-                    <input type="text" name="ratios[${ratioIndex}][size_name]" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Size (e.g., L)" value="${size}">
+                    <input type="text" name="ratios[${ratioIndex}][size_name]" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Size (e.g., L)" value="${size}">
                 </td>
                 <td class="p-2 w-1/2">
-                    <input type="number" name="ratios[${ratioIndex}][ratio]" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Ratio (e.g., 1)" value="${qty}">
+                    <input type="number" name="ratios[${ratioIndex}][ratio]" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" placeholder="Ratio (e.g., 1)" value="${qty}">
                 </td>
                 <td class="p-2">
                     <button type="button" class="btn btn-danger btn-sm remove-ratio-btn">Remove</button>

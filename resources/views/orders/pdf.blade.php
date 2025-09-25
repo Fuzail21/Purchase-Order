@@ -279,65 +279,67 @@
             @php
                 $colorName = $packInfo->colors->first()->color_name ?? '-';
             @endphp
-
+        
             @if (!in_array($colorName, $processedColors))
                 @php
                     $processedColors[] = $colorName;
-
+        
                     // Get all packs in this sizeGroup that have this color
                     $colorPacks = collect($packInfos)->filter(function ($p) use ($colorName) {
                         return $p->colors->pluck('color_name')->contains($colorName);
                     });
-
+        
                     $tableCuttingTotal = 0;
                     $tableActualTotal = 0;
                     $sizeSums = [];
                     foreach ($uniqueSizeNames as $sizeName) $sizeSums[$sizeName] = 0;
+        
+                    // NEW: flag to make sure ratios+header print only once
+                    $showRatioAndHeader = !isset($ratioHeaderPrinted);
                 @endphp
-
+        
                 <table class="tight new-table">
-                    {{-- Unified Ratio Table --}}
-                    <tr class="shade bold caps">
-                        <td colspan="3">RATIO</td>
-                        @foreach ($uniqueSizeNames as $sizeName)
-                            <th>{{ $sizeName }}</th>
+        
+                    {{-- ✅ Show Pack Ratios + Header only once --}}
+                    @if ($showRatioAndHeader)
+                        @foreach ($colorPacks as $pInfo)
+                            <tr class="shade bold caps">
+                                <td colspan="3" class="bold">
+                                    {{ $pInfo->pack->name }} PACK
+                                </td>
+                                @php $packRatioTotal = 0; @endphp
+                                @foreach ($uniqueSizeNames as $sizeName)
+                                    @php
+                                        $packSize = $pInfo->pack->sizes->firstWhere('size_name', $sizeName);
+                                        $ratioVal = $packSize->ratio ?? 0;
+                                        $packRatioTotal += $ratioVal;
+                                    @endphp
+                                    <td>{{ $ratioVal > 0 ? $ratioVal : '' }}</td>
+                                @endforeach
+                                <td class="bold">{{ $packRatioTotal }}</td>
+                                <td></td>
+                            </tr>
                         @endforeach
-                        <td>TOTAL</td>
-                        <td></td>
-                    </tr>
-                    @foreach ($colorPacks as $pInfo)
-                        <tr>
-                            <td colspan="3" class="bold">
-                                {{ $pInfo->pack->name }} PACK
-                            </td>
-                            @php
-                                $packRatioTotal = 0;
-                            @endphp
+        
+                        {{-- Quantity Table Header --}}
+                        <tr class="shade bold caps">
+                            <td>COLOR</td>
+                            <td>ADD-ON</td>
+                            <td>PACK#</td>
                             @foreach ($uniqueSizeNames as $sizeName)
-                                @php
-                                    $packSize = $pInfo->pack->sizes->firstWhere('size_name', $sizeName);
-                                    $ratioVal = $packSize->ratio ?? 0;
-                                    $packRatioTotal += $ratioVal;
-                                @endphp
-                                <td>{{ $ratioVal > 0 ? $ratioVal : '' }}</td>
+                                <th>{{ $sizeName }}</th>
                             @endforeach
-                            <td class="bold">{{ $packRatioTotal }}</td>
-                            <td></td>
+                            <td>CUTTING TOTAL</td>
+                            <td>ACTUAL</td>
                         </tr>
-                    @endforeach
-
-                    {{-- Quantity Table --}}
-                    <tr class="shade bold caps">
-                        <td>COLOR</td>
-                        <td>ADD-ON</td>
-                        <td>PACK#</td>
-                        @foreach ($uniqueSizeNames as $sizeName)
-                            <th>{{ $sizeName }}</th>
-                        @endforeach
-                        <td>CUTTING TOTAL</td>
-                        <td>ACTUAL</td>
-                    </tr>
-
+        
+                        @php
+                            // mark it as already printed
+                            $ratioHeaderPrinted = true;
+                        @endphp
+                    @endif
+        
+                    {{-- Quantity Rows --}}
                     @foreach ($colorPacks as $pInfo)
                         @foreach ($pInfo->colors as $c)
                             @if ($c->color_name == $colorName)
@@ -346,7 +348,7 @@
                                     $extraPercent = $c->extra_usage_qty ?? 0;
                                     $cuttingTotal = $qty + ($qty * $extraPercent)/100;
                                     $actualTotal = $c->qty;
-
+        
                                     $tableCuttingTotal += $cuttingTotal;
                                     $tableActualTotal += $actualTotal;
                                     $grandCuttingTotal += $cuttingTotal;
@@ -373,7 +375,7 @@
                             @endif
                         @endforeach
                     @endforeach
-
+        
                     <tr class="shade bold">
                         <td colspan="3">TOTAL</td>
                         @foreach ($uniqueSizeNames as $sizeName)
@@ -386,6 +388,7 @@
                 <div class="spacer-8"></div>
             @endif
         @endif
+
     @endforeach
         @endforeach
 

@@ -310,26 +310,31 @@ class OrderController extends Controller
         return view('setting.edit', compact('setting', 'title'));
     }
 
-    public function storeOrUpdate(Request $request){
+    public function storeOrUpdate(Request $request)
+    {
         $request->validate([
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
-
-        $setting = Setting::firstOrNew(['id' => 1]);
-
+    
+        $setting = Setting::first(); // always get the first settings row
+    
+        if (!$setting) {
+            $setting = new Setting();
+        }
+    
         if ($request->hasFile('logo')) {
             // delete old logo if exists
             if ($setting->logo_path && Storage::exists('public/' . $setting->logo_path)) {
                 Storage::delete('public/' . $setting->logo_path);
             }
-
+        
             // store new logo
             $path = $request->file('logo')->store('logos', 'public');
             $setting->logo_path = $path;
         }
-
+    
         $setting->save();
-
+    
         return redirect()->route('settings')->with('success', 'Settings updated successfully.');
     }
 }
