@@ -184,8 +184,16 @@
                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
                     </div>
 
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-medium mb-1">Store Name</label>
+                        <input type="text" name="store_name"
+                               value="{{ old('store_name', $order->store_name ?? '') }}"
+                               placeholder="Enter Store Name" required
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
                     <!-- File Upload (full width) -->
-                    <div class="md:col-span-4">
+                    <div class="md:col-span-2">
                         <label class="block text-gray-700 font-medium mb-1">Upload File</label>
                         <input type="file" 
                                name="file"
@@ -195,6 +203,34 @@
                         @if(isset($order) && $order->file_path)
                             <a href="{{ asset('storage/'.$order->file_path) }}" target="_blank" class="text-blue-600 text-sm mt-2 inline-block">
                                 View Current File
+                            </a>
+                        @endif
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-medium mb-1">PO</label>
+                        <input type="file" 
+                               name="po_file"
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+                               accept="image/jpeg, image/jpg, image/png, image/webp, application/pdf">
+
+                        @if(isset($order) && $order->po_file)
+                            <a href="{{ asset('storage/'.$order->po_file) }}" target="_blank" class="text-blue-600 text-sm mt-2 inline-block">
+                                View PO File
+                            </a>
+                        @endif
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-medium mb-1">Tag Pack</label>
+                        <input type="file" 
+                               name="tag_pack"
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+                               accept="image/jpeg, image/jpg, image/png, image/webp, application/pdf">
+
+                        @if(isset($order) && $order->tag_pack)
+                            <a href="{{ asset('storage/'.$order->tag_pack) }}" target="_blank" class="text-blue-600 text-sm mt-2 inline-block">
+                                View Tag Pack
                             </a>
                         @endif
                     </div>

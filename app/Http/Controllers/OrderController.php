@@ -78,11 +78,18 @@ class OrderController extends Controller
             $order->buyer = $request->buyer;
             $order->order_qty = $request->order_qty;
             $order->title = $request->title;
+            $order->store_name = $request->store_name;
             $order->description = $request->description;
             $order->po_label = $request->po_label;
             $order->care_label = $request->care_label;
             if ($request->hasFile('file')) {
                 $order->file_path = $request->file('file')->store('uploads', 'public');
+            }
+            if ($request->hasFile('po_file')) {
+                $order->po_file = $request->file('po_file')->store('po_files', 'public');
+            }
+            if ($request->hasFile('tag_pack')) {
+                $order->tag_pack = $request->file('tag_pack')->store('tag_pack', 'public');
             }
             $order->final_total = $request->finalTotal;
             $order->save();
@@ -243,12 +250,21 @@ class OrderController extends Controller
         $order->buyer = $request->buyer;
         $order->order_qty = $request->order_qty;
         $order->title = $request->title;
+        $order->store_name = $request->store_name;
         $order->description = $request->description;
         $order->po_label = $request->po_label;
         $order->care_label = $request->care_label;
 
         if ($request->hasFile('file')) {
             $order->file_path = $request->file('file')->store('uploads', 'public');
+        }
+
+        if ($request->hasFile('po_file')) {
+            $order->po_file = $request->file('po_file')->store('po_files', 'public');
+        }
+
+        if ($request->hasFile('tag_pack')) {
+            $order->tag_pack = $request->file('tag_pack')->store('tag_pack', 'public');
         }
 
         $order->final_total = $request->finalTotal;
